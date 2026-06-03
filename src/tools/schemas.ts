@@ -37,6 +37,22 @@ export const fileSchema = z
   })
   .describe("A repo file; the server validates the full shape (call prompthub_describe_file_format if unsure).");
 
+/** Surfaced verbatim by prompthub_describe_artifact_format. Disambiguates Artifact vs File. */
+export const ARTIFACT_FORMAT_GUIDE = `Artifacts vs files — they are DIFFERENT things:
+- A repo FILE is the reusable PROMPT itself (text / conversation / workflow). Publish with create_repo / publish_session / update_repo (see prompthub_describe_file_format).
+- An ARTIFACT is a GENERATED RESULT shown in the repo's "产物 / Artifacts" panel — a document, web page, image, video, or file produced by running the prompt.
+
+Publish an artifact in one of two ways:
+1) prompthub_publish_artifact — INLINE text. type "MARKDOWN" or "HTML"; pass the text in "content" (≤ 256 KiB). Use for generated docs or web pages.
+2) prompthub_upload_artifact — BINARY file. Pass a local "file" path; the tool reads + uploads it. type defaults from the extension:
+   - images .png/.jpg/.jpeg/.gif/.webp → IMAGE (≤ 10 MB)
+   - videos .mp4/.webm → VIDEO (≤ 100 MB)
+   - .pdf → FILE (≤ 25 MB)
+
+Both accept optional "title" and "filePath".
+filePath — STRONGLY PREFER OMITTING IT. Omitted = a REPO-LEVEL artifact that shows on every file page (recommended, always visible). Only set it to an EXISTING repo file path (copy one from prompthub_get_repo's files[].path); a wrong or non-existent path is accepted by the server but the artifact will NOT appear in the UI panel.
+To REPLACE an artifact (avoid duplicates): prompthub_get_repo to read artifacts[], prompthub_delete_artifact the old id, then publish again — the server APPENDS and does not de-duplicate.`;
+
 /** Raw-shape fragment shared by create_repo / update_repo / publish_session. */
 export const repoBodyFields = {
   repoName: z.string().describe("Repo name slug: lowercase letters/digits with single hyphens (e.g. 'code-review'). No spaces/uppercase/underscores."),
