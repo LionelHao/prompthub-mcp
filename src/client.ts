@@ -91,7 +91,7 @@ export class PromptHubClient {
   async putBytes(uploadUrl: string, bytes: Uint8Array, contentType: string): Promise<void> {
     let res: Response;
     try {
-      res = await this.fetchFn(uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: bytes });
+      res = await this.fetchFn(uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: bytes as unknown as BodyInit });
     } catch (e) {
       throw new ApiError("network", `upload failed: ${this.redact(e instanceof Error ? e.message : String(e))}`);
     }
