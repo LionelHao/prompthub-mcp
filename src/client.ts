@@ -75,6 +75,28 @@ export class PromptHubClient {
   updateRepo<T = unknown>(owner: string, name: string, body: RepoBody): Promise<T> {
     return this.request("PUT", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`, body);
   }
+  createInlineArtifact<T = unknown>(owner: string, name: string, body: { type: "MARKDOWN" | "HTML"; content: string; title?: string; filePath?: string }): Promise<T> {
+    return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts`, body);
+  }
+  requestUploadUrl<T = unknown>(owner: string, name: string, body: { type: "IMAGE" | "VIDEO" | "FILE"; filename: string; mimeType: string; size: number }): Promise<T> {
+    return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts/upload-url`, body);
+  }
+  confirmArtifactUpload<T = unknown>(owner: string, name: string, body: { storageKey: string; type: "IMAGE" | "VIDEO" | "FILE"; mimeType: string; size: number; title?: string; filePath?: string }): Promise<T> {
+    return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts/confirm`, body);
+  }
+  deleteArtifact<T = unknown>(owner: string, name: string, artifactId: string): Promise<T> {
+    return this.request("DELETE", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts/${encodeURIComponent(artifactId)}`);
+  }
+  /** 直传 R2：把原始字节 PUT 到签名 URL（不经 /api/v1）。 */
+  async putBytes(uploadUrl: string, bytes: Uint8Array, contentType: string): Promise<void> {
+    let res: Response;
+    try {
+      res = await this.fetchFn(uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: bytes });
+    } catch (e) {
+      throw new ApiError("network", `upload failed: ${this.redact(e instanceof Error ? e.message : String(e))}`);
+    }
+    if (!res.ok) throw new ApiError("network", `upload failed with status ${res.status}`);
+  }
 }
 
 export function createClient(config: PromptHubConfig, fetchFn?: FetchFn): PromptHubClient {
