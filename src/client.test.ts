@@ -74,6 +74,37 @@ describe("PromptHubClient", () => {
   });
 });
 
+describe("artifact methods", () => {
+  test("createInlineArtifact POSTs to /repos/:o/:n/artifacts", async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ ok: true, data: { id: "a1" } }), { status: 201 }));
+    const c = new PromptHubClient("ph_t", "https://h", fetchFn as unknown as typeof fetch);
+    const out = await c.createInlineArtifact("alice", "r", { type: "MARKDOWN", content: "# x" });
+    expect(out).toEqual({ id: "a1" });
+    expect(fetchFn).toHaveBeenCalledWith("https://h/api/v1/repos/alice/r/artifacts", expect.objectContaining({ method: "POST" }));
+  });
+
+  test("putBytes PUTs raw bytes to the signed URL with the content type", async () => {
+    const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+    const c = new PromptHubClient("ph_t", "https://h", fetchFn as unknown as typeof fetch);
+    await c.putBytes("https://r2/signed", new Uint8Array([1, 2, 3]), "image/png");
+    expect(fetchFn).toHaveBeenCalledWith("https://r2/signed", expect.objectContaining({ method: "PUT", headers: { "Content-Type": "image/png" } }));
+  });
+
+  test("putBytes throws ApiError on non-ok status", async () => {
+    const fetchFn = vi.fn(async () => new Response(null, { status: 403 }));
+    const c = new PromptHubClient("ph_t", "https://h", fetchFn as unknown as typeof fetch);
+    await expect(c.putBytes("https://r2/signed", new Uint8Array([1]), "image/png")).rejects.toThrow(/upload failed/);
+  });
+
+  test("putBytes 网络错误分支对令牌脱敏(§6 安全回归)", async () => {
+    const fetchFn = vi.fn(async () => { throw new Error("ECONNRESET https://r2/x?token=ph_secret"); });
+    const c = new PromptHubClient("ph_secret", "https://h", fetchFn as unknown as typeof fetch);
+    const err = await c.putBytes("https://r2/x", new Uint8Array([1]), "image/png").catch((e: unknown) => e as Error);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).not.toContain("ph_secret");
+  });
+});
+
 describe("createClient (fail-closed)", () => {
   test("throws unauthorized with code, and never touches fetch, when token is null", () => {
     const fetchFn = vi.fn();

@@ -23,4 +23,13 @@ describe("prompthub_get_repo", () => {
     expect(result.content[0].text).toContain("not_found");
     expect(result.content[0].text).not.toMatch(/forbidden|exists/i);
   });
+
+  test("透传服务端返回的 artifacts[]", async () => {
+    const getRepo = vi.fn(async () => ({ owner: "alice", name: "r", files: [], artifacts: [{ id: "a1", type: "MARKDOWN" }] }));
+    const { server, handlers } = createFakeServer();
+    registerGetRepo(server, { getClient: () => ({ getRepo } as unknown as PromptHubClient), baseUrl: "https://x" });
+    const result = (await handlers.get("prompthub_get_repo")!({ owner: "alice", name: "r" })) as { content: { text: string }[] };
+    expect(result.content[0].text).toContain("\"artifacts\"");
+    expect(result.content[0].text).toContain("a1");
+  });
 });
