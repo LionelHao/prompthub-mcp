@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile, mkdir, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PromptHubClient } from "../client.js";
@@ -46,6 +46,19 @@ describe("prompthub_upload_artifact", () => {
     registerUploadArtifact(server, { getClient: () => client, baseUrl: "https://x" });
     const file = await tmpFile("notes.txt", new Uint8Array([1]));
     const result = (await handlers.get("prompthub_upload_artifact")!({ owner: "a", name: "r", file })) as { isError?: boolean };
+    expect(result.isError).toBe(true);
+    expect(requestUploadUrl).not.toHaveBeenCalled();
+  });
+
+  test("传入目录路径 → 工具错误，且不发任何网络请求", async () => {
+    const baseDir = await mkdtemp(join(tmpdir(), "ph-updir-"));
+    const dirPng = `${baseDir}.png`;
+    await rename(baseDir, dirPng);
+    const requestUploadUrl = vi.fn();
+    const client = { requestUploadUrl } as unknown as PromptHubClient;
+    const { server, handlers } = createFakeServer();
+    registerUploadArtifact(server, { getClient: () => client, baseUrl: "https://x" });
+    const result = (await handlers.get("prompthub_upload_artifact")!({ owner: "a", name: "r", file: dirPng })) as { isError?: boolean };
     expect(result.isError).toBe(true);
     expect(requestUploadUrl).not.toHaveBeenCalled();
   });

@@ -13,5 +13,7 @@ describe("prompthub_describe_artifact_format", () => {
     expect(text).toContain("upload_artifact");
     expect(text).toMatch(/256 ?KiB/);
     expect(text).toMatch(/IMAGE|image/);
+    expect(text).toContain("OMITTING");
+    expect(text).toContain("REPLACE");
   });
 });
