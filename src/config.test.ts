@@ -1,0 +1,46 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { writeFileSync, rmSync } from "node:fs";
+import { describe, expect, test } from "vitest";
+import { resolveConfig, readConfigFile, DEFAULT_BASE_URL, type FileConfig } from "./config.js";
+
+describe("resolveConfig", () => {
+  test("defaults baseUrl to production and token to null when nothing set", () => {
+    const c = resolveConfig({}, null);
+    expect(c.baseUrl).toBe("https://www.awesome-prompt.com");
+    expect(c.baseUrl).toBe(DEFAULT_BASE_URL);
+    expect(c.token).toBeNull();
+  });
+
+  test("env overrides file for both token and baseUrl", () => {
+    const file: FileConfig = { token: "ph_file", baseUrl: "https://file.example" };
+    const c = resolveConfig(
+      { PROMPTHUB_TOKEN: "ph_env", PROMPTHUB_BASE_URL: "https://env.example" },
+      file,
+    );
+    expect(c.token).toBe("ph_env");
+    expect(c.baseUrl).toBe("https://env.example");
+  });
+
+  test("falls back to file values when env absent", () => {
+    const c = resolveConfig({}, { token: "ph_file", baseUrl: "https://file.example/" });
+    expect(c.token).toBe("ph_file");
+    expect(c.baseUrl).toBe("https://file.example"); // trailing slash stripped
+  });
+
+  test("readConfigFile drops a non-string token so it cannot bypass fail-closed", () => {
+    const tmp = join(tmpdir(), `prompthub-cfg-${Date.now()}.json`);
+    writeFileSync(tmp, JSON.stringify({ token: 12345, baseUrl: "https://x" }));
+    try {
+      const file = readConfigFile(tmp);
+      expect(file?.token).toBeUndefined();
+      expect(file?.baseUrl).toBe("https://x");
+    } finally {
+      rmSync(tmp, { force: true });
+    }
+  });
+
+  test("readConfigFile returns null for a missing file", () => {
+    expect(readConfigFile(join(tmpdir(), "definitely-not-here-xyz.json"))).toBeNull();
+  });
+});
