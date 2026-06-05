@@ -53,6 +53,25 @@ Both accept optional "title" and "filePath".
 filePath — STRONGLY PREFER OMITTING IT. Omitted = a REPO-LEVEL artifact that shows on every file page (recommended, always visible). Only set it to an EXISTING repo file path (copy one from prompthub_get_repo's files[].path); a wrong or non-existent path is accepted by the server but the artifact will NOT appear in the UI panel.
 To REPLACE an artifact (avoid duplicates): prompthub_get_repo to read artifacts[], prompthub_delete_artifact the old id, then publish again — the server APPENDS and does not de-duplicate.`;
 
+/** Surfaced verbatim by prompthub_describe_reference_format. */
+export const REFERENCE_FORMAT_GUIDE = `PromptReference vs Artifact vs File:
+- Repo FILE: the reusable prompt itself. Publish with create_repo / update_repo / publish_session.
+- Artifact: a generated OUTPUT result. Publish with publish_artifact / upload_artifact. Use role "INTERMEDIATE" for workflow node outputs.
+- PromptReference: an INPUT asset used by a prompt unit. This is what prompthub_upload_reference manages.
+
+PromptReference target fields:
+- filePath: an existing repo file path from prompthub_get_repo files[].path.
+- targetKind: "TEXT_FILE" | "WORKFLOW_NODE" | "CONVERSATION_TURN".
+- targetId: required for WORKFLOW_NODE and CONVERSATION_TURN; omit for TEXT_FILE unless binding to a specific text graph node.
+
+Supported input asset kinds default from file extension:
+- images: .png .jpg .jpeg .gif .webp -> IMAGE
+- video: .mp4 .webm -> VIDEO
+- audio: .mp3 .wav .ogg -> AUDIO
+- docs/text: .pdf -> FILE, .txt -> TEXT, .md -> MARKDOWN, .html -> HTML
+
+To replace a reference: prompthub_get_repo to read promptReferences[], prompthub_delete_reference the old id, then upload again.`;
+
 /** Raw-shape fragment shared by create_repo / update_repo / publish_session. */
 export const repoBodyFields = {
   repoName: z.string().describe("Repo name slug: lowercase letters/digits with single hyphens (e.g. 'code-review'). No spaces/uppercase/underscores."),

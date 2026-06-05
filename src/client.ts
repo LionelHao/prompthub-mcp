@@ -10,6 +10,25 @@ export interface RepoBody {
   files: unknown[];
 }
 
+export type ArtifactUploadType = "IMAGE" | "VIDEO" | "AUDIO" | "PDF" | "TEXT" | "MARKDOWN" | "HTML" | "FILE";
+export type ArtifactRole = "FINAL" | "INTERMEDIATE";
+export type ArtifactTargetKind = "WORKFLOW_NODE";
+export type ReferenceKind = "IMAGE" | "VIDEO" | "AUDIO" | "PDF" | "TEXT" | "MARKDOWN" | "HTML" | "FILE";
+export type ReferenceTargetKind = "TEXT_FILE" | "WORKFLOW_NODE" | "CONVERSATION_TURN";
+
+export interface ArtifactTargetFields {
+  role?: ArtifactRole;
+  filePath?: string;
+  targetKind?: ArtifactTargetKind;
+  targetId?: string;
+}
+
+export interface ReferenceTargetFields {
+  filePath: string;
+  targetKind: ReferenceTargetKind;
+  targetId?: string;
+}
+
 type FetchFn = typeof fetch;
 
 export class PromptHubClient {
@@ -38,11 +57,15 @@ export class PromptHubClient {
       throw new ApiError("network", `cannot reach PromptHub: ${this.redact(e instanceof Error ? e.message : String(e))}`);
     }
 
+    const contentType = res.headers.get("content-type") ?? "unknown content-type";
+    const text = await res.text();
     let json: unknown;
     try {
-      json = await res.json();
+      json = JSON.parse(text);
     } catch {
-      throw new ApiError("internal", "invalid response from server", res.status);
+      const preview = this.redact(text).replace(/\s+/g, " ").trim().slice(0, 160);
+      const suffix = preview ? `: ${preview}` : "";
+      throw new ApiError("internal", `invalid response from server (HTTP ${res.status}, ${contentType})${suffix}`, res.status);
     }
     if (!json || typeof json !== "object" || !("ok" in json)) {
       throw new ApiError("internal", "unexpected response shape", res.status);
@@ -75,17 +98,29 @@ export class PromptHubClient {
   updateRepo<T = unknown>(owner: string, name: string, body: RepoBody): Promise<T> {
     return this.request("PUT", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`, body);
   }
-  createInlineArtifact<T = unknown>(owner: string, name: string, body: { type: "MARKDOWN" | "HTML"; content: string; title?: string; filePath?: string }): Promise<T> {
+  deleteRepo<T = unknown>(owner: string, name: string): Promise<T> {
+    return this.request("DELETE", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
+  }
+  createInlineArtifact<T = unknown>(owner: string, name: string, body: { type: "MARKDOWN" | "HTML"; content: string; title?: string } & ArtifactTargetFields): Promise<T> {
     return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts`, body);
   }
-  requestUploadUrl<T = unknown>(owner: string, name: string, body: { type: "IMAGE" | "VIDEO" | "FILE"; filename: string; mimeType: string; size: number }): Promise<T> {
+  requestUploadUrl<T = unknown>(owner: string, name: string, body: { type: ArtifactUploadType; filename: string; mimeType: string; size: number } & ArtifactTargetFields): Promise<T> {
     return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts/upload-url`, body);
   }
-  confirmArtifactUpload<T = unknown>(owner: string, name: string, body: { storageKey: string; type: "IMAGE" | "VIDEO" | "FILE"; mimeType: string; size: number; title?: string; filePath?: string }): Promise<T> {
+  confirmArtifactUpload<T = unknown>(owner: string, name: string, body: { storageKey: string; type: ArtifactUploadType; mimeType: string; size: number; title?: string } & ArtifactTargetFields): Promise<T> {
     return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts/confirm`, body);
   }
   deleteArtifact<T = unknown>(owner: string, name: string, artifactId: string): Promise<T> {
     return this.request("DELETE", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/artifacts/${encodeURIComponent(artifactId)}`);
+  }
+  requestReferenceUploadUrl<T = unknown>(owner: string, name: string, body: { kind: ReferenceKind; filename: string; mimeType: string; size: number } & ReferenceTargetFields): Promise<T> {
+    return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/references/upload-url`, body);
+  }
+  confirmReferenceUpload<T = unknown>(owner: string, name: string, body: { storageKey: string; kind: ReferenceKind; filename: string; mimeType: string; size: number; title?: string } & ReferenceTargetFields): Promise<T> {
+    return this.request("POST", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/references/confirm`, body);
+  }
+  deleteReference<T = unknown>(owner: string, name: string, referenceId: string): Promise<T> {
+    return this.request("DELETE", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/references/${encodeURIComponent(referenceId)}`);
   }
   /** 直传 R2：把原始字节 PUT 到签名 URL（不经 /api/v1）。 */
   async putBytes(uploadUrl: string, bytes: Uint8Array, contentType: string): Promise<void> {

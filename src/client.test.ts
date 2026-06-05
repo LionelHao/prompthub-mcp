@@ -44,6 +44,15 @@ describe("PromptHubClient", () => {
     expect(fetchFn.mock.calls[0][0]).toBe("https://api.test/api/v1/repos/alice/code-review");
   });
 
+  test("deleteRepo DELETEs /api/v1/repos/:owner/:name", async () => {
+    const fetchFn = vi.fn(async () => okResponse({ deleted: true }));
+    const client = new PromptHubClient("ph_x", "https://api.test", fetchFn);
+    await expect(client.deleteRepo("alice", "code-review")).resolves.toEqual({ deleted: true });
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("https://api.test/api/v1/repos/alice/code-review");
+    expect((init as RequestInit).method).toBe("DELETE");
+  });
+
   test("search builds the query string and omits absent params", async () => {
     const fetchFn = vi.fn(async () => okResponse({ repos: [], total: 0 }));
     const client = new PromptHubClient("ph_x", "https://api.test", fetchFn);
@@ -72,6 +81,18 @@ describe("PromptHubClient", () => {
     });
     expect.assertions(1);
   });
+
+  test("non-JSON responses include HTTP status and content type without leaking the token", async () => {
+    const html = '<!DOCTYPE html><html><body>404 for ph_SECRET_TOKEN</body></html>';
+    const fetchFn = vi.fn(async () => new Response(html, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } }));
+    const client = new PromptHubClient("ph_SECRET_TOKEN", "https://api.test", fetchFn);
+    const err = await client.whoami().catch((e: unknown) => e as ApiError);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(404);
+    expect(err.message).toContain("HTTP 404");
+    expect(err.message).toContain("text/html");
+    expect(err.message).not.toContain("ph_SECRET_TOKEN");
+  });
 });
 
 describe("artifact methods", () => {
@@ -81,6 +102,33 @@ describe("artifact methods", () => {
     const out = await c.createInlineArtifact("alice", "r", { type: "MARKDOWN", content: "# x" });
     expect(out).toEqual({ id: "a1" });
     expect(fetchFn).toHaveBeenCalledWith("https://h/api/v1/repos/alice/r/artifacts", expect.objectContaining({ method: "POST" }));
+  });
+
+  test("createInlineArtifact forwards intermediate role and target fields", async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ ok: true, data: { id: "a1" } }), { status: 201 }));
+    const c = new PromptHubClient("ph_t", "https://h", fetchFn as unknown as typeof fetch);
+    await c.createInlineArtifact("alice", "r", {
+      type: "MARKDOWN",
+      content: "# x",
+      role: "INTERMEDIATE",
+      filePath: "flow",
+      targetKind: "WORKFLOW_NODE",
+      targetId: "n1",
+    });
+    expect(JSON.parse(fetchFn.mock.calls[0][1]!.body as string)).toMatchObject({
+      role: "INTERMEDIATE",
+      filePath: "flow",
+      targetKind: "WORKFLOW_NODE",
+      targetId: "n1",
+    });
+  });
+
+  test("reference upload methods use the references endpoints", async () => {
+    const fetchFn = vi.fn(async () => okResponse({ uploadUrl: "https://r2", storageKey: "k" }));
+    const c = new PromptHubClient("ph_t", "https://h", fetchFn as unknown as typeof fetch);
+    await c.requestReferenceUploadUrl("alice", "r", { filePath: "main", targetKind: "TEXT_FILE", kind: "TEXT", filename: "notes.txt", mimeType: "text/plain", size: 5 });
+    expect(fetchFn.mock.calls[0][0]).toBe("https://h/api/v1/repos/alice/r/references/upload-url");
+    expect(JSON.parse(fetchFn.mock.calls[0][1]!.body as string).kind).toBe("TEXT");
   });
 
   test("putBytes PUTs raw bytes to the signed URL with the content type", async () => {

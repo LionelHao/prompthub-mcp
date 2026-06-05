@@ -17,15 +17,18 @@ export function registerUploadArtifact(server: McpServer, ctx: ToolContext): voi
         owner: z.string(),
         name: z.string(),
         file: z.string().describe("Path to a local file (absolute or relative to the server's cwd)."),
-        type: z.enum(["IMAGE", "VIDEO", "FILE"]).optional().describe("Defaults from the file extension."),
+        type: z.enum(["IMAGE", "VIDEO", "AUDIO", "PDF", "TEXT", "MARKDOWN", "HTML", "FILE"]).optional().describe("Defaults from the file extension."),
         title: z.string().optional(),
+        role: z.enum(["FINAL", "INTERMEDIATE"]).optional().describe("Defaults to FINAL. Use INTERMEDIATE only for a workflow node output."),
         filePath: z.string().optional().describe("PREFER OMITTING. Omit = repo-level artifact, visible on every file page (recommended). Only set to an EXISTING repo file path (from prompthub_get_repo's files[].path); a wrong/non-existent path is accepted but the artifact will NOT show in the UI panel."),
+        targetKind: z.enum(["WORKFLOW_NODE"]).optional().describe("Required with role=INTERMEDIATE."),
+        targetId: z.string().optional().describe("Workflow node id required with role=INTERMEDIATE."),
       },
     },
     async (args) => {
       try {
-        const { owner, name, file, type, title, filePath } = args as {
-          owner: string; name: string; file: string; type?: UploadType; title?: string; filePath?: string;
+        const { owner, name, file, type, title, role, filePath, targetKind, targetId } = args as {
+          owner: string; name: string; file: string; type?: UploadType; title?: string; role?: "FINAL" | "INTERMEDIATE"; filePath?: string; targetKind?: "WORKFLOW_NODE"; targetId?: string;
         };
         // --- 全部 fail-fast 在网络之前 (AC11) ---
         const { mimeType, uploadType } = inferUpload(file, type); // 未知扩展名 → 抛
@@ -38,11 +41,11 @@ export function registerUploadArtifact(server: McpServer, ctx: ToolContext): voi
         // --- 三步直传 ---
         const client = ctx.getClient();
         const { uploadUrl, storageKey } = (await client.requestUploadUrl(owner, name, {
-          type: uploadType, filename: basename(file), mimeType, size: bytes.byteLength,
+          type: uploadType, filename: basename(file), mimeType, size: bytes.byteLength, role, filePath, targetKind, targetId,
         })) as { uploadUrl: string; storageKey: string };
         await client.putBytes(uploadUrl, bytes, mimeType);
         const { id } = (await client.confirmArtifactUpload(owner, name, {
-          storageKey, type: uploadType, mimeType, size: bytes.byteLength, title, filePath,
+          storageKey, type: uploadType, mimeType, size: bytes.byteLength, title, role, filePath, targetKind, targetId,
         })) as { id: string };
         return textResult(`Uploaded artifact ${id} to ${repoUrl(ctx.baseUrl, owner, name)}`);
       } catch (e) {

@@ -12,6 +12,10 @@ import { registerPublishArtifact } from "./publish-artifact.js";
 import { registerUploadArtifact } from "./upload-artifact.js";
 import { registerDeleteArtifact } from "./delete-artifact.js";
 import { registerDescribeArtifact } from "./describe-artifact.js";
+import { registerDeleteRepo } from "./delete-repo.js";
+import { registerUploadReference } from "./upload-reference.js";
+import { registerDeleteReference } from "./delete-reference.js";
+import { registerDescribeReference } from "./describe-reference.js";
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerWhoami(server, ctx);
@@ -26,4 +30,8 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerUploadArtifact(server, ctx);
   registerDeleteArtifact(server, ctx);
   registerDescribeArtifact(server);
+  registerDeleteRepo(server, ctx);
+  registerUploadReference(server, ctx);
+  registerDeleteReference(server, ctx);
+  registerDescribeReference(server);
 }

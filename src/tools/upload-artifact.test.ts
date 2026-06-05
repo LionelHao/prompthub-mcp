@@ -25,8 +25,21 @@ describe("prompthub_upload_artifact", () => {
     const result = (await handlers.get("prompthub_upload_artifact")!({ owner: "alice", name: "r", file, title: "Shot" })) as { content: { text: string }[] };
     expect(requestUploadUrl).toHaveBeenCalledWith("alice", "r", { type: "IMAGE", filename: "shot.png", mimeType: "image/png", size: 4 });
     expect(putBytes).toHaveBeenCalledWith("https://r2/signed", expect.any(Uint8Array), "image/png");
-    expect(confirmArtifactUpload).toHaveBeenCalledWith("alice", "r", { storageKey: "k/shot.png", type: "IMAGE", mimeType: "image/png", size: 4, title: "Shot", filePath: undefined });
+    expect(confirmArtifactUpload).toHaveBeenCalledWith("alice", "r", { storageKey: "k/shot.png", type: "IMAGE", mimeType: "image/png", size: 4, title: "Shot", filePath: undefined, role: undefined, targetKind: undefined, targetId: undefined });
     expect(result.content[0].text).toContain("https://www.awesome-prompt.com/@alice/r");
+  });
+
+  test("INTERMEDIATE 参数会透传到 upload-url 与 confirm", async () => {
+    const file = await tmpFile("node-output.md", new TextEncoder().encode("# node"));
+    const requestUploadUrl = vi.fn(async () => ({ uploadUrl: "https://r2/signed", storageKey: "k/node-output.md" }));
+    const putBytes = vi.fn(async () => undefined);
+    const confirmArtifactUpload = vi.fn(async () => ({ id: "a1" }));
+    const client = { requestUploadUrl, putBytes, confirmArtifactUpload } as unknown as PromptHubClient;
+    const { server, handlers } = createFakeServer();
+    registerUploadArtifact(server, { getClient: () => client, baseUrl: "https://x" });
+    await handlers.get("prompthub_upload_artifact")!({ owner: "alice", name: "r", file, role: "INTERMEDIATE", filePath: "flow", targetKind: "WORKFLOW_NODE", targetId: "n1" });
+    expect(requestUploadUrl).toHaveBeenCalledWith("alice", "r", expect.objectContaining({ type: "MARKDOWN", role: "INTERMEDIATE", filePath: "flow", targetKind: "WORKFLOW_NODE", targetId: "n1" }));
+    expect(confirmArtifactUpload).toHaveBeenCalledWith("alice", "r", expect.objectContaining({ role: "INTERMEDIATE", filePath: "flow", targetKind: "WORKFLOW_NODE", targetId: "n1" }));
   });
 
   test("本地文件不存在 → 工具错误，且不发任何网络请求(AC11)", async () => {
@@ -44,7 +57,7 @@ describe("prompthub_upload_artifact", () => {
     const client = { requestUploadUrl } as unknown as PromptHubClient;
     const { server, handlers } = createFakeServer();
     registerUploadArtifact(server, { getClient: () => client, baseUrl: "https://x" });
-    const file = await tmpFile("notes.txt", new Uint8Array([1]));
+    const file = await tmpFile("binary.exe", new Uint8Array([1]));
     const result = (await handlers.get("prompthub_upload_artifact")!({ owner: "a", name: "r", file })) as { isError?: boolean };
     expect(result.isError).toBe(true);
     expect(requestUploadUrl).not.toHaveBeenCalled();

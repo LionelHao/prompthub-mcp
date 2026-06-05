@@ -16,13 +16,16 @@ export function registerPublishArtifact(server: McpServer, ctx: ToolContext): vo
         type: z.enum(["MARKDOWN", "HTML"]),
         content: z.string().describe("The generated text (Markdown or HTML), ≤256 KiB."),
         title: z.string().optional(),
+        role: z.enum(["FINAL", "INTERMEDIATE"]).optional().describe("Defaults to FINAL. Use INTERMEDIATE only for a workflow node output."),
         filePath: z.string().optional().describe("PREFER OMITTING. Omit = repo-level artifact, visible on every file page (recommended). Only set to an EXISTING repo file path (from prompthub_get_repo's files[].path); a wrong/non-existent path is accepted but the artifact will NOT show in the UI panel."),
+        targetKind: z.enum(["WORKFLOW_NODE"]).optional().describe("Required with role=INTERMEDIATE."),
+        targetId: z.string().optional().describe("Workflow node id required with role=INTERMEDIATE."),
       },
     },
     async (args) => {
       try {
-        const { owner, name, type, content, title, filePath } = args as { owner: string; name: string; type: "MARKDOWN" | "HTML"; content: string; title?: string; filePath?: string };
-        const { id } = (await ctx.getClient().createInlineArtifact(owner, name, { type, content, title, filePath })) as { id: string };
+        const { owner, name, type, content, title, role, filePath, targetKind, targetId } = args as { owner: string; name: string; type: "MARKDOWN" | "HTML"; content: string; title?: string; role?: "FINAL" | "INTERMEDIATE"; filePath?: string; targetKind?: "WORKFLOW_NODE"; targetId?: string };
+        const { id } = (await ctx.getClient().createInlineArtifact(owner, name, { type, content, title, role, filePath, targetKind, targetId })) as { id: string };
         return textResult(`Published artifact ${id} to ${repoUrl(ctx.baseUrl, owner, name)}`);
       } catch (e) {
         return toToolError(e);
