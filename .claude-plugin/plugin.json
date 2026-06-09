@@ -1,0 +1,7 @@
+{
+  "name": "prompthub",
+  "displayName": "PromptHub",
+  "description": "Publish and manage PromptHub prompts from Claude Code; organize a prompt before uploading.",
+  "version": "0.1.0",
+  "author": { "name": "PromptHub", "url": "https://www.awesome-prompt.com" }
+}
