@@ -10,7 +10,8 @@
     "build": "tsc",
     "test": "vitest run",
     "verify": "tsc --noEmit && vitest run",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "sync-skill": "node scripts/sync-skill.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29",
