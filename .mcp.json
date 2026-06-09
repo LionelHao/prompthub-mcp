@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "prompthub": {
+      "command": "npx",
+      "args": ["-y", "@prompthub/mcp"],
+      "env": {
+        "PROMPTHUB_TOKEN": "${PROMPTHUB_TOKEN}"
+      }
+    }
+  }
+}
