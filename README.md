@@ -66,6 +66,23 @@ You should see your handle. Then publish:
 
 The assistant will call `prompthub_publish_session` and reply with the new repo URL (e.g. `https://www.awesome-prompt.com/@you/my-first-prompt`). If it's unsure of the format, it can call `prompthub_describe_file_format` first.
 
+## Organize a prompt before publishing
+
+`prompthub_organize_prompt`（无参，无需令牌）取回「整理提示词」方法论：把原始 prompt 重写得更清晰，
+并按 PromptHub 的 `{{变量}}` 规范模板化，便于他人编辑替换。发布前先调它，再用 create_repo /
+publish_session 发布。
+
+### 作为 Claude Code plugin 安装
+
+本仓同时是 Claude Code plugin（声明了 MCP server + 原生 `prompt-organize` skill）：
+
+    claude --plugin-dir /path/to/prompthub-mcp   # 本地
+    # 或 /plugin install <git-url>
+
+更新方法论文本后，重新生成 SKILL.md：
+
+    PROMPTHUB_BASE_URL=https://www.awesome-prompt.com npm run sync-skill
+
 ## License
 
 MIT
