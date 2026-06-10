@@ -3,7 +3,7 @@ name: prompt-organize
 description: Use this FIRST whenever the user wants to upload, publish, share, or save a prompt to PromptHub. Rewrites the user's raw prompt for clarity and converts the genuinely reusable parts into PromptHub {{variable}} template syntax so others can edit and replace them. Covers single-text, conversation, and workflow prompts. Confirm the variable list with the user before publishing.
 ---
 
-# PromptHub · Organize-a-Prompt (v1.0.0)
+# PromptHub · Organize-a-Prompt (v1.1.0)
 
 You help a user turn a raw prompt into something that is **(1) clearly expressed** and
 **(2) reusable by others** through PromptHub's `{{variable}}` template syntax — *before* it is
@@ -40,9 +40,13 @@ over-extracting breaks the prompt. Aim for the few variables a reuser actually s
 
 Variable syntax (PromptHub / 0025):
 - single free line → `{{产品名称}}`
+- single free line with a default → `{{产品:宠物喂食器}}` (the default is pre-filled on the edit-variables form, still freely editable)
 - multi-line / long free text → `{{产品描述...}}` (trailing `...` marks a textarea and is stripped from the shown label)
+- multi-line with a default → `{{产品描述...:智能宠物喂食器，支持远程投喂}}`
 - one choice from a known set → `{{视觉风格=极简|科技|活泼}}` (defaults to the first option)
 - a bounded block of input → a tag block (see below)
+
+**Never discard the user's content when you templatize.** When the prompt already contains a concrete value for a span you extract, keep that value as the variable's default — write `{{产品:宠物喂食器}}` or `{{产品描述...:智能宠物喂食器，支持远程投喂}}`, not a bare `{{产品}}`. The reuser sees the original pre-filled and can change it; nothing is lost. (Defaults are for free-text input/textarea; options already default to their first choice.)
 
 **Rules — each violation makes the field silently render as plain text (no form, no error), so
 re-read every `{{…}}` after writing:**
@@ -72,12 +76,14 @@ summary of changes). **Stop and wait for the user's reply — do not proceed to 
 
 ## Stage 4 — Emit
 Produce the final templatized prompt + a short variable summary. Re-run the Stage 2 Rules check over
-every `{{…}}`. Then **stop**: tell the user it is ready and let them choose whether and how to
-publish. This skill does not publish.
+every `{{…}}`, and verify:
+- Every extracted free-text variable carries its original value as a default (e.g. `{{产品:宠物喂食器}}`) when the prompt had one.
+
+Then **stop**: tell the user it is ready and let them choose whether and how to publish. This skill does not publish.
 
 ## Worked example (text)
 Raw:
-`你是资深落地页文案与前端。根据下面的产品描述，输出一个语义化、响应式的单页 HTML：{产品描述}`
+`你是资深落地页文案与前端。根据下面的产品描述，输出一个语义化、响应式的单页 HTML：智能宠物喂食器，支持远程投喂`
 
 Organized + templatized:
 ```
@@ -89,10 +95,10 @@ Organized + templatized:
 完整可运行的单文件 HTML（含内联 CSS）。
 
 <产品描述>
-{{产品描述...}}
+{{产品描述...:智能宠物喂食器，支持远程投喂}}
 </产品描述>
 ```
-Variables: `产品描述` (textarea) — the only thing a reuser swaps. Role, task and output format stay
+Variables: `产品描述` (textarea, default = the user's original value "智能宠物喂食器，支持远程投喂") — the only thing a reuser swaps. Role, task and output format stay
 fixed skeleton, **not** templatized.
 
 ## Per content type
