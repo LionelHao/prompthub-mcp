@@ -1,16 +1,16 @@
 {
-  "name": "@prompthub/mcp",
+  "name": "prompthub-mcp",
   "version": "0.1.0",
   "description": "MCP server for PromptHub — publish and fetch prompts from Claude Code / Codex.",
   "type": "module",
   "bin": { "prompthub-mcp": "./dist/index.js" },
-  "files": ["dist"],
   "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "git+https://github.com/LionelHao/prompthub-mcp.git" },
   "scripts": {
     "build": "tsc",
+    "prepare": "npm run build",
     "test": "vitest run",
     "verify": "tsc --noEmit && vitest run",
-    "prepublishOnly": "npm run build",
     "sync-skill": "node scripts/sync-skill.mjs"
   },
   "dependencies": {

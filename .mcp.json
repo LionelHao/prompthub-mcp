@@ -2,7 +2,7 @@
   "mcpServers": {
     "prompthub": {
       "command": "npx",
-      "args": ["-y", "@prompthub/mcp"],
+      "args": ["-y", "github:LionelHao/prompthub-mcp"],
       "env": {
         "PROMPTHUB_TOKEN": "${PROMPTHUB_TOKEN}"
       }

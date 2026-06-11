@@ -1,4 +1,4 @@
-# @prompthub/mcp
+# prompthub-mcp
 
 MCP server for [PromptHub](https://www.awesome-prompt.com). Publish, fetch, list, update and search prompt repositories from Claude Code or Codex.
 
@@ -26,18 +26,26 @@ Environment variables take precedence over the file.
 
 ## 3. Register the server
 
-**Claude Code:**
+The server installs straight from this public GitHub repo — no npm registry, no token to pull it.
+
+**Recommended — install once, then point at the `prompthub-mcp` binary** (fast startup; builds on install):
 
 ```bash
-claude mcp add prompthub --env PROMPTHUB_TOKEN=ph_xxx -- npx -y @prompthub/mcp
+npm i -g github:LionelHao/prompthub-mcp
+claude mcp add prompthub --env PROMPTHUB_TOKEN=ph_xxx -- prompthub-mcp
+```
+
+**Zero-install alternative** — let `npx` fetch + build the repo on demand (slower cold start, always tracks `main`):
+
+```bash
+claude mcp add prompthub --env PROMPTHUB_TOKEN=ph_xxx -- npx -y github:LionelHao/prompthub-mcp
 ```
 
 **Codex** — add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.prompthub]
-command = "npx"
-args = ["-y", "@prompthub/mcp"]
+command = "prompthub-mcp"   # after `npm i -g github:LionelHao/prompthub-mcp`
 env = { PROMPTHUB_TOKEN = "ph_xxx" }
 ```
 
