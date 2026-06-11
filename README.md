@@ -41,11 +41,20 @@ claude mcp add prompthub --env PROMPTHUB_TOKEN=ph_xxx -- prompthub-mcp
 claude mcp add prompthub --env PROMPTHUB_TOKEN=ph_xxx -- npx -y github:LionelHao/prompthub-mcp
 ```
 
-**Codex** — add to `~/.codex/config.toml`:
+**Codex** — add to `~/.codex/config.toml`. After `npm i -g github:LionelHao/prompthub-mcp`:
 
 ```toml
 [mcp_servers.prompthub]
-command = "prompthub-mcp"   # after `npm i -g github:LionelHao/prompthub-mcp`
+command = "prompthub-mcp"
+env = { PROMPTHUB_TOKEN = "ph_xxx" }
+```
+
+Or zero-install (npx fetches + builds on demand):
+
+```toml
+[mcp_servers.prompthub]
+command = "npx"
+args = ["-y", "github:LionelHao/prompthub-mcp"]
 env = { PROMPTHUB_TOKEN = "ph_xxx" }
 ```
 
