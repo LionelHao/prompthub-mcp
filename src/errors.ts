@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { DEFAULT_BASE_URL } from "./config.js";
 
 /** Raised when the API returns { ok:false } or a request cannot complete. */
 export class ApiError extends Error {
@@ -29,5 +30,8 @@ export function toToolError(err: unknown): CallToolResult {
 }
 
 export function repoUrl(baseUrl: string, owner: string, name: string): string {
-  return `${baseUrl}/@${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+  // Guarantee an absolute, clickable origin. A blank or relative baseUrl would otherwise
+  // produce a relative path the user can't click; fall back to the public site.
+  const origin = /^https?:\/\//i.test(baseUrl) ? baseUrl.replace(/\/+$/, "") : DEFAULT_BASE_URL;
+  return `${origin}/@${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
 }

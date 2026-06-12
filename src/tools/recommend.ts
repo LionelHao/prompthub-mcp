@@ -8,10 +8,11 @@ const MAX_LIMIT = 10;
 const MAX_QUERIES = 5;
 
 const NEXT_STEPS_HITS =
-  "Present the top picks to the user with title, description, star/copy counts and url, " +
-  "so they can review the full prompt and its artifacts on the site. If the user picks one, " +
-  "call prompthub_get_repo(owner, name) to fetch the full prompt and apply it to the current task. " +
-  "If none fit, write a fresh prompt for the user.";
+  "Show each pick to the user as a clickable Markdown link — render the full `url` field as the link " +
+  "(e.g. [owner/name](url)), never a bare @owner/name handle or relative path — together with the " +
+  "description and star/copy counts, so they can click straight through to the full prompt and its " +
+  "artifacts on the site. If the user picks one, call prompthub_get_repo(owner, name) to fetch the full " +
+  "prompt and apply it to the current task. If none fit, write a fresh prompt for the user.";
 
 const NEXT_STEPS_EMPTY =
   "No matching community prompts found. Write a fresh prompt for the user now — " +

@@ -10,11 +10,11 @@ function repo(owner: string, name: string, over: Partial<Record<string, unknown>
   };
 }
 
-function setup(search: (...a: unknown[]) => Promise<unknown>) {
+function setup(search: (...a: unknown[]) => Promise<unknown>, baseUrl = "https://www.awesome-prompt.com") {
   const { server, handlers, configs } = createFakeServer();
   registerRecommend(server, {
     getClient: () => ({ search } as unknown as PromptHubClient),
-    baseUrl: "https://www.awesome-prompt.com",
+    baseUrl,
   });
   return { handlers, configs };
 }
@@ -113,5 +113,20 @@ describe("prompthub_recommend", () => {
     const { handlers } = setup(search as never);
     const out = parse(await handlers.get("prompthub_recommend")!({ queries: ["x"] }));
     expect(out.recommendations).toHaveLength(5);
+  });
+
+  test("命中时 nextSteps 指示把 url 渲染成可点击链接（避免只显示 @owner/name 相对路径）", async () => {
+    const search = vi.fn(async () => ({ repos: [repo("alice", "x")], total: 1 }));
+    const { handlers } = setup(search as never);
+    const out = parse(await handlers.get("prompthub_recommend")!({ queries: ["x"] }));
+    expect(out.nextSteps.toLowerCase()).toContain("url");
+    expect(out.nextSteps).toMatch(/clickable|link/i);
+  });
+
+  test("ctx.baseUrl 为空时 url 仍是绝对地址，不退化成相对路径", async () => {
+    const search = vi.fn(async () => ({ repos: [repo("alice", "x")], total: 1 }));
+    const { handlers } = setup(search as never, "");
+    const out = parse(await handlers.get("prompthub_recommend")!({ queries: ["x"] }));
+    expect(out.recommendations[0].url).toMatch(/^https:\/\/[^/]+\/@alice\/x\?/);
   });
 });
