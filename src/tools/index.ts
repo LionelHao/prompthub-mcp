@@ -17,10 +17,12 @@ import { registerUploadReference } from "./upload-reference.js";
 import { registerDeleteReference } from "./delete-reference.js";
 import { registerDescribeReference } from "./describe-reference.js";
 import { registerOrganizePrompt } from "./organize-prompt.js";
+import { registerRecommend } from "./recommend.js";
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerWhoami(server, ctx);
   registerSearch(server, ctx);
+  registerRecommend(server, ctx);
   registerGetRepo(server, ctx);
   registerListRepos(server, ctx);
   registerOrganizePrompt(server, ctx);
