@@ -1,7 +1,12 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { textResult, toToolError } from "../errors.js";
+import { textResult, toToolError, withRepoUrl } from "../errors.js";
 import type { ToolContext } from "./context.js";
+
+interface SearchHit {
+  owner: string;
+  name: string;
+}
 
 export function registerSearch(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
@@ -18,8 +23,14 @@ export function registerSearch(server: McpServer, ctx: ToolContext): void {
     async (args) => {
       try {
         const { q, sort, type } = args as { q: string; sort?: string; type?: string };
-        const data = await ctx.getClient().search(q, sort, type);
-        return textResult(JSON.stringify(data, null, 2));
+        const data = await ctx
+          .getClient()
+          .search<{ repos?: SearchHit[]; total?: number }>(q, sort, type);
+        // Enrich each hit with a clickable absolute url so the host can link straight to it.
+        const enriched = data?.repos
+          ? { ...data, repos: data.repos.map((r) => withRepoUrl(ctx.baseUrl, r)) }
+          : data;
+        return textResult(JSON.stringify(enriched, null, 2));
       } catch (e) {
         return toToolError(e);
       }

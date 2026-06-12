@@ -35,3 +35,12 @@ export function repoUrl(baseUrl: string, owner: string, name: string): string {
   const origin = /^https?:\/\//i.test(baseUrl) ? baseUrl.replace(/\/+$/, "") : DEFAULT_BASE_URL;
   return `${origin}/@${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
 }
+
+/** Add a clickable absolute `url` to a repo-shaped object so the host never has to (and never
+ *  surfaces a bare @owner/name that reads like a relative path). */
+export function withRepoUrl<T extends { owner: string; name: string }>(
+  baseUrl: string,
+  repo: T,
+): T & { url: string } {
+  return { ...repo, url: repoUrl(baseUrl, repo.owner, repo.name) };
+}
