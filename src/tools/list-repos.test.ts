@@ -19,4 +19,17 @@ describe("prompthub_list_repos", () => {
     await handlers.get("prompthub_list_repos")!({ owner: "alice" });
     expect(listRepos).toHaveBeenCalledWith("alice");
   });
+
+  test("每个仓库都带可点击的绝对 url", async () => {
+    const listRepos = vi.fn(async () => [
+      { owner: "alice", name: "r1" },
+      { owner: "bob", name: "r2" },
+    ]);
+    const { server, handlers } = createFakeServer();
+    registerListRepos(server, { getClient: () => ({ listRepos } as unknown as PromptHubClient), baseUrl: "https://www.awesome-prompt.com" });
+    const result = (await handlers.get("prompthub_list_repos")!({})) as { content: { text: string }[] };
+    const data = JSON.parse(result.content[0].text);
+    expect(data[0].url).toBe("https://www.awesome-prompt.com/@alice/r1");
+    expect(data[1].url).toBe("https://www.awesome-prompt.com/@bob/r2");
+  });
 });

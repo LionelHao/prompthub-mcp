@@ -24,6 +24,15 @@ describe("prompthub_get_repo", () => {
     expect(result.content[0].text).not.toMatch(/forbidden|exists/i);
   });
 
+  test("返回结果带可点击的绝对 url", async () => {
+    const getRepo = vi.fn(async () => ({ owner: "alice", name: "code-review", files: [] }));
+    const { server, handlers } = createFakeServer();
+    registerGetRepo(server, { getClient: () => ({ getRepo } as unknown as PromptHubClient), baseUrl: "https://www.awesome-prompt.com" });
+    const result = (await handlers.get("prompthub_get_repo")!({ owner: "alice", name: "code-review" })) as { content: { text: string }[] };
+    const data = JSON.parse(result.content[0].text);
+    expect(data.url).toBe("https://www.awesome-prompt.com/@alice/code-review");
+  });
+
   test("透传服务端返回的 artifacts[]", async () => {
     const getRepo = vi.fn(async () => ({ owner: "alice", name: "r", files: [], artifacts: [{ id: "a1", type: "MARKDOWN" }] }));
     const { server, handlers } = createFakeServer();
