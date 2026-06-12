@@ -18,6 +18,14 @@ function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
+/** First value that is a non-blank string (trimmed); undefined if none. Treats "" / "   " as unset. */
+function firstNonBlank(...vals: (string | undefined)[]): string | undefined {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim() !== "") return v.trim();
+  }
+  return undefined;
+}
+
 /** Reads ~/.prompthub/config.json; returns null if missing/unparseable. Validates field types at this
  *  boundary so a non-string token can't slip past the fail-closed check downstream. */
 export function readConfigFile(path = join(homedir(), ".prompthub", "config.json")): FileConfig | null {
@@ -39,6 +47,7 @@ export function resolveConfig(
   fileConfig: FileConfig | null = readConfigFile(),
 ): PromptHubConfig {
   const token = env.PROMPTHUB_TOKEN ?? fileConfig?.token ?? null;
-  const baseUrl = stripTrailingSlash(env.PROMPTHUB_BASE_URL ?? fileConfig?.baseUrl ?? DEFAULT_BASE_URL);
+  // Empty/whitespace base (e.g. PROMPTHUB_BASE_URL="") must not slip past as a relative origin.
+  const baseUrl = stripTrailingSlash(firstNonBlank(env.PROMPTHUB_BASE_URL, fileConfig?.baseUrl) ?? DEFAULT_BASE_URL);
   return { token, baseUrl };
 }

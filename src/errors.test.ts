@@ -32,4 +32,18 @@ describe("errors", () => {
       "https://www.awesome-prompt.com/@alice/code-review",
     );
   });
+
+  test("repoUrl falls back to the production origin when baseUrl is blank or relative", () => {
+    // A blank/relative base would otherwise yield an unclickable relative path.
+    expect(repoUrl("", "alice", "code-review")).toBe(
+      "https://www.awesome-prompt.com/@alice/code-review",
+    );
+    expect(repoUrl("/zh", "alice", "code-review")).toBe(
+      "https://www.awesome-prompt.com/@alice/code-review",
+    );
+  });
+
+  test("repoUrl strips a trailing slash on an absolute base", () => {
+    expect(repoUrl("https://x.example/", "a", "b")).toBe("https://x.example/@a/b");
+  });
 });

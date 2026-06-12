@@ -28,6 +28,12 @@ describe("resolveConfig", () => {
     expect(c.baseUrl).toBe("https://file.example"); // trailing slash stripped
   });
 
+  test("treats an empty/whitespace baseUrl as unset and uses the default", () => {
+    expect(resolveConfig({ PROMPTHUB_BASE_URL: "" }, null).baseUrl).toBe(DEFAULT_BASE_URL);
+    expect(resolveConfig({ PROMPTHUB_BASE_URL: "   " }, null).baseUrl).toBe(DEFAULT_BASE_URL);
+    expect(resolveConfig({}, { baseUrl: "" }).baseUrl).toBe(DEFAULT_BASE_URL);
+  });
+
   test("readConfigFile drops a non-string token so it cannot bypass fail-closed", () => {
     const tmp = join(tmpdir(), `prompthub-cfg-${Date.now()}.json`);
     writeFileSync(tmp, JSON.stringify({ token: 12345, baseUrl: "https://x" }));
