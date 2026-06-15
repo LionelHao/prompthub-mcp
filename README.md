@@ -14,12 +14,15 @@ Either set an environment variable:
 export PROMPTHUB_TOKEN=ph_xxx
 # optional, defaults to https://www.awesome-prompt.com
 export PROMPTHUB_BASE_URL=https://www.awesome-prompt.com
+# optional — force which model search/recommend/publishing prefer (a registry slug,
+# e.g. claude-sonnet-4-6). Overrides host auto-detection; handy for multi-model hosts.
+export PROMPTHUB_MODEL=claude-sonnet-4-6
 ```
 
 …or create `~/.prompthub/config.json`:
 
 ```json
-{ "token": "ph_xxx", "baseUrl": "https://www.awesome-prompt.com" }
+{ "token": "ph_xxx", "baseUrl": "https://www.awesome-prompt.com", "model": "claude-sonnet-4-6" }
 ```
 
 Environment variables take precedence over the file.
@@ -63,13 +66,25 @@ env = { PROMPTHUB_TOKEN = "ph_xxx" }
 | Tool | What it does |
 |---|---|
 | `prompthub_whoami` | Verify the token; show your handle/name |
-| `prompthub_search` | Search public repos by keyword |
+| `prompthub_search` | Search public repos by keyword (model-aware — see below) |
+| `prompthub_recommend` | Recommend high-usage repos for a task (model-aware) |
 | `prompthub_get_repo` | Fetch one repo (owner/name) with its file tree |
 | `prompthub_list_repos` | List your repos, or a user's public repos |
 | `prompthub_create_repo` | Create a repo from explicit fields |
 | `prompthub_update_repo` | Full-replace one of your repos |
 | `prompthub_publish_session` | Distill the current session into a reusable repo and publish |
 | `prompthub_describe_file_format` | Show the exact `files[]` JSON shapes (text/conversation/workflow) |
+
+## Model-aware search & publishing
+
+The server detects which AI model you're working with and tailors results to it — no setup needed:
+
+- **Detection** — inferred from the MCP host (`clientInfo`): Claude Code → `claude-sonnet-4-6`, Codex → `gpt-5-5`. Priority: per-call `model` arg > `PROMPTHUB_MODEL` env > host. Unknown / multi-model hosts (e.g. Cursor) fall back to `PROMPTHUB_MODEL`.
+- **Search & recommend** — `prompthub_search` / `prompthub_recommend` rank prompts tagged for your model first — a *preference, not a filter* (model-agnostic prompts still appear). Results carry an `appliedModel` field + a short note to relay to the user.
+- **Publishing** — `prompthub_create_repo` / `prompthub_publish_session` / `prompthub_update_repo` auto-tag your prompt's **text** nodes with the current model (only nodes without an explicit model; image/video nodes are left untouched). The reply notes how many nodes were tagged.
+- **Override anytime** — tell the assistant "find Gemini prompts" (per-call `model`), or set `PROMPTHUB_MODEL`. Run `prompthub_whoami` to see the detected host + resolved model.
+
+Model slugs/labels come from the live registry at `GET /api/v1/models`.
 
 ## 5. First run
 
