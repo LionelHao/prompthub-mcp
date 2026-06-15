@@ -7,7 +7,12 @@ import { registerTools } from "./tools/index.js";
 export function createServer(): McpServer {
   const config = resolveConfig();
   const server = new McpServer({ name: "prompthub", version: "0.1.0" });
-  registerTools(server, { getClient: () => createClient(config), baseUrl: config.baseUrl });
+  registerTools(server, {
+    getClient: () => createClient(config),
+    baseUrl: config.baseUrl,
+    getClientInfo: () => server.server.getClientVersion(),
+    envModel: config.model,
+  });
   return server;
 }
 

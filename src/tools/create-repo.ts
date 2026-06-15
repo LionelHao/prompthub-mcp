@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { repoUrl, textResult, toToolError } from "../errors.js";
 import type { RepoBody } from "../client.js";
+import { applyModelStamp } from "../model.js";
 import type { ToolContext } from "./context.js";
 import { repoBodyFields } from "./schemas.js";
 
@@ -15,8 +16,9 @@ export function registerCreateRepo(server: McpServer, ctx: ToolContext): void {
     async (args) => {
       try {
         const body = args as unknown as RepoBody;
-        const data = (await ctx.getClient().createRepo(body)) as { owner: string; name: string };
-        return textResult(`Created ${repoUrl(ctx.baseUrl, data.owner, data.name)}\n\n${JSON.stringify(data, null, 2)}`);
+        const { files, tag } = await applyModelStamp(ctx, body.files);
+        const data = (await ctx.getClient().createRepo({ ...body, files })) as { owner: string; name: string };
+        return textResult(`Created ${repoUrl(ctx.baseUrl, data.owner, data.name)}\n\n${JSON.stringify(data, null, 2)}${tag}`);
       } catch (e) {
         return toToolError(e);
       }

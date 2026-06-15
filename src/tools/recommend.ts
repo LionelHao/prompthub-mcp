@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { repoUrl, textResult, toToolError } from "../errors.js";
+import { resolveModel, modelNote, modelMeta } from "../model.js";
 import type { ToolContext } from "./context.js";
 
 const DEFAULT_LIMIT = 5;
@@ -61,17 +62,19 @@ export function registerRecommend(server: McpServer, ctx: ToolContext): void {
           .max(MAX_LIMIT)
           .optional()
           .describe("Max recommendations to return; default 5."),
+        model: z.string().trim().optional().describe("Registry model slug to rank for; overrides host detection / PROMPTHUB_MODEL."),
       },
     },
     async (args) => {
       try {
-        const { queries, limit } = args as { queries: string[]; limit?: number };
+        const { queries, limit, model } = args as { queries: string[]; limit?: number; model?: string };
         const client = ctx.getClient();
         const cap = limit ?? DEFAULT_LIMIT;
+        const resolved = await resolveModel(ctx, model);
 
         // "popular"：服务端 0029 新增的热门排序（按去重复制+star），排序权威在服务端，本地不重算分。
         const settled = await Promise.allSettled(
-          queries.map((q) => client.search<SearchData>(q, "popular")),
+          queries.map((q) => client.search<SearchData>(q, "popular", undefined, resolved?.slug)),
         );
         const fulfilled = settled.filter(
           (r): r is PromiseFulfilledResult<SearchData> => r.status === "fulfilled",
@@ -115,7 +118,10 @@ export function registerRecommend(server: McpServer, ctx: ToolContext): void {
           }));
 
         const nextSteps = recommendations.length > 0 ? NEXT_STEPS_HITS : NEXT_STEPS_EMPTY;
-        return textResult(JSON.stringify({ recommendations, nextSteps }, null, 2));
+        const payload = resolved
+          ? { recommendations, nextSteps, appliedModel: modelMeta(resolved), modelNote: modelNote(resolved) }
+          : { recommendations, nextSteps };
+        return textResult(JSON.stringify(payload, null, 2));
       } catch (e) {
         return toToolError(e);
       }

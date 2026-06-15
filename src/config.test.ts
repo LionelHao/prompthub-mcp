@@ -4,6 +4,16 @@ import { writeFileSync, rmSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { resolveConfig, readConfigFile, DEFAULT_BASE_URL, type FileConfig } from "./config.js";
 
+describe("resolveConfig model（0001）", () => {
+  test("env > file > null；空白视为未设", () => {
+    expect(resolveConfig({ PROMPTHUB_MODEL: "claude-sonnet-4-6" }, null).model).toBe("claude-sonnet-4-6");
+    expect(resolveConfig({}, { model: "gpt-5-5" }).model).toBe("gpt-5-5");
+    expect(resolveConfig({ PROMPTHUB_MODEL: "claude-sonnet-4-6" }, { model: "gpt-5-5" }).model).toBe("claude-sonnet-4-6");
+    expect(resolveConfig({}, null).model).toBeNull();
+    expect(resolveConfig({ PROMPTHUB_MODEL: "   " }, null).model).toBeNull();
+  });
+});
+
 describe("resolveConfig", () => {
   test("defaults baseUrl to production and token to null when nothing set", () => {
     const c = resolveConfig({}, null);
