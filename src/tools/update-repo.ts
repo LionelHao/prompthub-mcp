@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { repoUrl, textResult, toToolError } from "../errors.js";
 import type { RepoBody } from "../client.js";
+import { applyModelStamp } from "../model.js";
 import type { ToolContext } from "./context.js";
 import { repoBodyFields } from "./schemas.js";
 
@@ -20,8 +21,9 @@ export function registerUpdateRepo(server: McpServer, ctx: ToolContext): void {
     async (args) => {
       try {
         const { owner, name, ...rest } = args as unknown as RepoBody & { owner: string; name: string };
-        const data = (await ctx.getClient().updateRepo(owner, name, rest)) as { owner: string; name: string };
-        return textResult(`Updated ${repoUrl(ctx.baseUrl, data.owner, data.name)}\n\n${JSON.stringify(data, null, 2)}`);
+        const { files, tag } = await applyModelStamp(ctx, rest.files);
+        const data = (await ctx.getClient().updateRepo(owner, name, { ...rest, files })) as { owner: string; name: string };
+        return textResult(`Updated ${repoUrl(ctx.baseUrl, data.owner, data.name)}\n\n${JSON.stringify(data, null, 2)}${tag}`);
       } catch (e) {
         return toToolError(e);
       }

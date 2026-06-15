@@ -7,11 +7,13 @@ export const DEFAULT_BASE_URL = "https://www.awesome-prompt.com";
 export interface FileConfig {
   token?: string;
   baseUrl?: string;
+  model?: string;
 }
 
 export interface PromptHubConfig {
   token: string | null;
   baseUrl: string;
+  model: string | null;
 }
 
 function stripTrailingSlash(url: string): string {
@@ -36,6 +38,7 @@ export function readConfigFile(path = join(homedir(), ".prompthub", "config.json
     return {
       token: typeof obj.token === "string" ? obj.token : undefined,
       baseUrl: typeof obj.baseUrl === "string" ? obj.baseUrl : undefined,
+      model: typeof obj.model === "string" ? obj.model : undefined,
     };
   } catch {
     return null;
@@ -49,5 +52,6 @@ export function resolveConfig(
   const token = env.PROMPTHUB_TOKEN ?? fileConfig?.token ?? null;
   // Empty/whitespace base (e.g. PROMPTHUB_BASE_URL="") must not slip past as a relative origin.
   const baseUrl = stripTrailingSlash(firstNonBlank(env.PROMPTHUB_BASE_URL, fileConfig?.baseUrl) ?? DEFAULT_BASE_URL);
-  return { token, baseUrl };
+  const model = firstNonBlank(env.PROMPTHUB_MODEL, fileConfig?.model) ?? null;
+  return { token, baseUrl, model };
 }

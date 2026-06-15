@@ -93,6 +93,23 @@ describe("PromptHubClient", () => {
     expect(err.message).toContain("text/html");
     expect(err.message).not.toContain("ph_SECRET_TOKEN");
   });
+
+  test("search appends &model when provided, omits when absent", async () => {
+    const fetchFn = vi.fn(async () => okResponse({ repos: [], total: 0 }));
+    const client = new PromptHubClient("ph_x", "https://api.test", fetchFn);
+    await client.search("hooks", "popular", undefined, "claude-sonnet-4-6");
+    expect(fetchFn.mock.calls[0][0]).toBe("https://api.test/api/v1/search?q=hooks&sort=popular&model=claude-sonnet-4-6");
+    await client.search("hooks");
+    expect(fetchFn.mock.calls[1][0]).toBe("https://api.test/api/v1/search?q=hooks");
+  });
+
+  test("listModels GETs /api/v1/models and unwraps", async () => {
+    const fetchFn = vi.fn(async () => okResponse({ models: [{ slug: "gpt-5-5", label: "GPT-5.5" }] }));
+    const client = new PromptHubClient("ph_x", "https://api.test", fetchFn);
+    const data = await client.listModels();
+    expect(data).toEqual({ models: [{ slug: "gpt-5-5", label: "GPT-5.5" }] });
+    expect(fetchFn.mock.calls[0][0]).toBe("https://api.test/api/v1/models");
+  });
 });
 
 describe("artifact methods", () => {
@@ -156,9 +173,9 @@ describe("artifact methods", () => {
 describe("createClient (fail-closed)", () => {
   test("throws unauthorized with code, and never touches fetch, when token is null", () => {
     const fetchFn = vi.fn();
-    expect(() => createClient({ token: null, baseUrl: "https://api.test" }, fetchFn)).toThrowError(ApiError);
+    expect(() => createClient({ token: null, baseUrl: "https://api.test", model: null }, fetchFn)).toThrowError(ApiError);
     try {
-      createClient({ token: null, baseUrl: "https://api.test" }, fetchFn);
+      createClient({ token: null, baseUrl: "https://api.test", model: null }, fetchFn);
     } catch (e) {
       expect((e as ApiError).code).toBe("unauthorized");
     }
@@ -168,7 +185,7 @@ describe("createClient (fail-closed)", () => {
 
   test("returns a usable client when token is present", async () => {
     const fetchFn = vi.fn(async () => okResponse({ handle: "a", name: "A" }));
-    const client = createClient({ token: "ph_x", baseUrl: "https://api.test" }, fetchFn);
+    const client = createClient({ token: "ph_x", baseUrl: "https://api.test", model: null }, fetchFn);
     await expect(client.whoami()).resolves.toEqual({ handle: "a", name: "A" });
   });
 });

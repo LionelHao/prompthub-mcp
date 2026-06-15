@@ -80,11 +80,16 @@ export class PromptHubClient {
   whoami<T = unknown>(): Promise<T> {
     return this.request("GET", "/user");
   }
-  search<T = unknown>(q: string, sort?: string, type?: string): Promise<T> {
+  search<T = unknown>(q: string, sort?: string, type?: string, model?: string): Promise<T> {
     const params = new URLSearchParams({ q });
     if (sort) params.set("sort", sort);
     if (type) params.set("type", type);
+    if (model) params.set("model", model);
     return this.request("GET", `/search?${params.toString()}`);
+  }
+  /** 公开端点：模型注册表（slug↔label 解析用）。 */
+  listModels<T = unknown>(): Promise<T> {
+    return this.request("GET", "/models");
   }
   getRepo<T = unknown>(owner: string, name: string): Promise<T> {
     return this.request("GET", `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);

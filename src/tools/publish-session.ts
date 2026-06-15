@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { repoUrl, textResult, toToolError } from "../errors.js";
 import type { RepoBody } from "../client.js";
+import { applyModelStamp } from "../model.js";
 import type { ToolContext } from "./context.js";
 import { fileSchema } from "./schemas.js";
 
@@ -39,9 +40,10 @@ export function registerPublishSession(server: McpServer, ctx: ToolContext): voi
           visibility: "public" | "private";
           files: unknown[];
         };
-        const body: RepoBody = { repoName, description: description ?? "", visibility, topics: [], readme: "", files };
-        const data = (await ctx.getClient().createRepo(body)) as { owner: string; name: string };
-        return textResult(`Published ${repoUrl(ctx.baseUrl, data.owner, data.name)}\n\n${JSON.stringify(data, null, 2)}`);
+        const baseBody: RepoBody = { repoName, description: description ?? "", visibility, topics: [], readme: "", files };
+        const { files: stampedFiles, tag } = await applyModelStamp(ctx, baseBody.files);
+        const data = (await ctx.getClient().createRepo({ ...baseBody, files: stampedFiles })) as { owner: string; name: string };
+        return textResult(`Published ${repoUrl(ctx.baseUrl, data.owner, data.name)}\n\n${JSON.stringify(data, null, 2)}${tag}`);
       } catch (e) {
         return toToolError(e);
       }

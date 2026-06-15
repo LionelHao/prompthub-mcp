@@ -1,7 +1,10 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi, beforeEach } from "vitest";
 import type { PromptHubClient } from "../client.js";
 import { createFakeServer } from "../test-utils.js";
+import { resetModelsCacheForTest } from "../model.js";
 import { registerRecommend } from "./recommend.js";
+
+beforeEach(() => resetModelsCacheForTest());
 
 function repo(owner: string, name: string, over: Partial<Record<string, unknown>> = {}) {
   return {
@@ -39,8 +42,8 @@ describe("prompthub_recommend", () => {
     );
     const { handlers } = setup(search as never);
     const out = parse(await handlers.get("prompthub_recommend")!({ queries: ["q1", "q2"] }));
-    expect(search).toHaveBeenCalledWith("q1", "popular");
-    expect(search).toHaveBeenCalledWith("q2", "popular");
+    expect(search).toHaveBeenCalledWith("q1", "popular", undefined, undefined);
+    expect(search).toHaveBeenCalledWith("q2", "popular", undefined, undefined);
     expect(out.recommendations.map((r) => r.name)).toEqual(["A", "B", "C"]);
     expect(out.recommendations.filter((r) => r.name === "B")).toHaveLength(1);
   });
@@ -128,5 +131,16 @@ describe("prompthub_recommend", () => {
     const { handlers } = setup(search as never, "");
     const out = parse(await handlers.get("prompthub_recommend")!({ queries: ["x"] }));
     expect(out.recommendations[0].url).toMatch(/^https:\/\/[^/]+\/@alice\/x\?/);
+  });
+
+  test("解析宿主模型并把 slug 传给每路 search，输出加 appliedModel", async () => {
+    const search = vi.fn(async () => ({ repos: [], total: 0 }));
+    const listModels = vi.fn(async () => ({ models: [{ slug: "gpt-5-5", label: "GPT-5.5", vendor: "OpenAI", vendorSlug: "openai", modality: "text" }] }));
+    const { server, handlers } = createFakeServer();
+    registerRecommend(server, { getClient: () => ({ search, listModels } as unknown as PromptHubClient), baseUrl: "https://x", getClientInfo: () => ({ name: "codex" }) });
+    const out = JSON.parse(((await handlers.get("prompthub_recommend")!({ queries: ["a"] })) as { content: { text: string }[] }).content[0].text);
+    expect(search).toHaveBeenCalledWith("a", "popular", undefined, "gpt-5-5");
+    expect(out.appliedModel).toMatchObject({ slug: "gpt-5-5", source: "host" });
+    expect(out.modelNote).toContain("GPT-5.5");
   });
 });
