@@ -1,6 +1,6 @@
 # 0001 · MCP 模型识别 + 搜索/推荐带模型
 
-- **状态**：done（实现完成，待用户确认提交）— `npm run verify` 全绿（tsc + 129 测试过 / 2 skip）
+- **状态**：done（PR #7 合入 main 2026-06-15）— `npm run verify` 全绿（tsc + 129 测试过 / 2 skip）；真实场景验收 M 组（识别+搜索）全 PASS（见桌面验收报告）
 - **设计源**：`prompt-hub` 仓 `docs/proposals/2026-06-14-mcp-model-tagging-design.md`（切片二）
 - **依赖**：切片一（`prompt-hub` 已落地）——`GET /api/v1/search?model=<slug>`（boost）+ `GET /api/v1/models`。
 - **隐私**：本仓与 `prompt-hub` 同属私有项目，仅本地闭环，不外部同步、不调 Flow、未经明确要求不 commit/push。

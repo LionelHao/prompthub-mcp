@@ -1,6 +1,6 @@
 # 0002 · MCP 上传时自动给文本节点打模型标签
 
-- **状态**：done（实现完成，待用户确认提交）— `npm run verify` 全绿（tsc + 129 测试过 / 2 skip）
+- **状态**：done（PR #7 合入 main 2026-06-15）— `npm run verify` 全绿（tsc + 129 测试过 / 2 skip）；真实场景验收 U 组（上传打标签）+ E 组（跨仓 E2E）全 PASS（见桌面验收报告）
 - **设计源**：`prompt-hub` 仓 `docs/proposals/2026-06-14-mcp-model-tagging-design.md`（切片三）
 - **依赖**：切片二（`0001`）——复用 `resolveModel`（拿当前模型 label）。
 - **隐私**：同 `0001`，本地闭环、不外部同步、未经明确要求不 commit/push。
