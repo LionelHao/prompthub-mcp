@@ -54,8 +54,17 @@ describe("SKILL.md 形态与规范 parity", () => {
   test("正文足够长、含每个规范 token 与五阶段锚点（防 body 漂移/陈旧/截断）", () => {
     const body = bodyAfterFrontmatter(read());
     expect(body.trim().length).toBeGreaterThan(1000);
+    expect(body).toContain("# PromptHub · Organize-a-Prompt (v1.2.0)");
     for (const token of CANONICAL_TOKENS) expect(body).toContain(token);
     for (const anchor of STAGE_ANCHORS) expect(body).toContain(anchor);
+  });
+
+  test("保护 Runner Contract 外壳，只允许整理节点业务 prompt", () => {
+    const body = bodyAfterFrontmatter(read());
+    expect(body).toContain("Runner Contract envelope");
+    expect(body).toContain("event shapes");
+    expect(body).toContain("workflow node `promptText`");
+    expect(body).toContain("unchanged Runner Contract envelope");
   });
 });
 

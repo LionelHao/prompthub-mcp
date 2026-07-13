@@ -3,7 +3,7 @@ import type { PromptHubClient } from "../client.js";
 import { createFakeServer } from "../test-utils.js";
 import { registerTools } from "./index.js";
 
-test("registers all 18 prompthub tools", () => {
+test("registers all 19 prompthub tools", () => {
   const { server, handlers } = createFakeServer();
   registerTools(server, { getClient: () => ({} as PromptHubClient), baseUrl: "https://x" });
   expect([...handlers.keys()].sort()).toEqual([
@@ -14,6 +14,7 @@ test("registers all 18 prompthub tools", () => {
     "prompthub_describe_artifact_format",
     "prompthub_describe_file_format",
     "prompthub_describe_reference_format",
+    "prompthub_describe_runner_protocol",
     "prompthub_get_repo",
     "prompthub_list_repos",
     "prompthub_organize_prompt",

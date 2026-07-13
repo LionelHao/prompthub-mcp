@@ -18,6 +18,7 @@ import { registerDeleteReference } from "./delete-reference.js";
 import { registerDescribeReference } from "./describe-reference.js";
 import { registerOrganizePrompt } from "./organize-prompt.js";
 import { registerRecommend } from "./recommend.js";
+import { registerDescribeRunnerProtocol } from "./describe-runner-protocol.js";
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerWhoami(server, ctx);
@@ -30,6 +31,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   registerUpdateRepo(server, ctx);
   registerPublishSession(server, ctx);
   registerDescribeFormat(server);
+  registerDescribeRunnerProtocol(server);
   registerPublishArtifact(server, ctx);
   registerUploadArtifact(server, ctx);
   registerDeleteArtifact(server, ctx);

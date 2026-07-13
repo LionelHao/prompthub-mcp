@@ -19,13 +19,18 @@ describe("prompthub_organize_prompt", () => {
     expect(configs.get("prompthub_organize_prompt")?.inputSchema).toEqual({});
   });
 
-  test("透传方法论 body 作为文本，不是错误；且用 ctx.baseUrl 而非 getClient", async () => {
+  test("返回远端方法论并强制前置本地 Runner Contract 护栏；且用 ctx.baseUrl 而非 getClient", async () => {
     vi.mocked(fetchOrganizeSkill).mockResolvedValue({ name: "prompt-organize", version: "1.0.0", body: "# guide body" });
     const { server, handlers } = createFakeServer();
     registerOrganizePrompt(server, ctx);
     const result = (await handlers.get("prompthub_organize_prompt")!({})) as { content: { text: string }[]; isError?: boolean };
     expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toBe("# guide body");
+    expect(result.content[0].text).toContain("# guide body");
+    expect(result.content[0].text).toContain("Runner Contract envelope");
+    expect(result.content[0].text).toContain("node business promptText");
+    expect(result.content[0].text.indexOf("Runner Contract envelope")).toBeLessThan(
+      result.content[0].text.indexOf("# guide body"),
+    );
     expect(vi.mocked(fetchOrganizeSkill)).toHaveBeenCalledWith("https://x");
   });
 

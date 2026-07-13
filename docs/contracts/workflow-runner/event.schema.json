@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.1/event.schema.json",
+  "title": "PromptHub Workflow Runner Event v1.1",
+  "oneOf": [
+    { "$ref": "#/$defs/run_started" },
+    { "$ref": "#/$defs/node_started" },
+    { "$ref": "#/$defs/node_progress" },
+    { "$ref": "#/$defs/node_retrying" },
+    { "$ref": "#/$defs/node_awaiting" },
+    { "$ref": "#/$defs/node_completed" },
+    { "$ref": "#/$defs/node_failed" },
+    { "$ref": "#/$defs/node_skipped" },
+    { "$ref": "#/$defs/run_completed" },
+    { "$ref": "#/$defs/log" }
+  ],
+  "$defs": {
+    "ts": { "type": "string", "format": "date-time" },
+    "nodeId": { "type": "string", "minLength": 1 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "round": { "type": "integer", "minimum": 1 },
+    "artifactPath": {
+      "type": "string",
+      "description": "Consumer-compatible safe run-relative artifact path. Runner Prompt v2 producers use artifacts/<index>-<nodeId>/..., while v1.1 consumers also accept legacy artifacts/<nonempty-dir>/... paths.",
+      "pattern": "^(?![\\s\\S]*[\\\\\\u0000\\r\\n])(?![\\s\\S]*//)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|$))artifacts/[^/]+(?:/[^/]+)+$"
+    },
+    "run_started": {
+      "type": "object", "required": ["ts", "event", "agent"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "run_started" }, "agent": { "type": "string", "minLength": 1 } }
+    },
+    "node_started": {
+      "type": "object", "required": ["ts", "event", "nodeId", "attempt"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_started" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "attempt": { "$ref": "#/$defs/attempt" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "node_progress": {
+      "type": "object", "required": ["ts", "event", "nodeId"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_progress" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "message": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "node_retrying": {
+      "type": "object", "required": ["ts", "event", "nodeId", "attempt", "reason"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_retrying" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "attempt": { "$ref": "#/$defs/attempt" }, "reason": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "node_awaiting": {
+      "type": "object", "required": ["ts", "event", "nodeId"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_awaiting" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "node_completed": {
+      "type": "object", "required": ["ts", "event", "nodeId", "artifacts"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_completed" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifactPath" } }, "degraded": { "type": "boolean" }, "cached": { "type": "boolean" }, "tokens": { "type": "number", "minimum": 0 }, "costUsd": { "type": "number", "minimum": 0 }, "note": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "node_failed": {
+      "type": "object", "required": ["ts", "event", "nodeId", "error"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_failed" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "error": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "node_skipped": {
+      "type": "object", "required": ["ts", "event", "nodeId", "reason"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_skipped" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "reason": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
+    },
+    "run_completed": {
+      "type": "object", "required": ["ts", "event", "status"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "run_completed" }, "status": { "enum": ["success", "partial", "failed"] } }
+    },
+    "log": {
+      "type": "object", "required": ["ts", "event", "message"],
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "log" }, "message": { "type": "string" } }
+    }
+  }
+}

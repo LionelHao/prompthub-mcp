@@ -4,6 +4,12 @@ import { textResult, toToolError } from "../errors.js";
 import { fetchOrganizeSkill } from "../skills.js";
 import type { ToolContext } from "./context.js";
 
+export const RUNNER_CONTRACT_ORGANIZE_GUARD = `## Runner Contract envelope · hard boundary
+If the input contains a PromptHub Runner Contract envelope, do not rewrite, shorten, reorder,
+templatize, summarize, or weaken it or its path/hash/events/lifecycle rules. Only organize an explicitly
+isolated node business promptText. If that boundary is unclear, stop and call
+prompthub_describe_runner_protocol before editing.`;
+
 export function registerOrganizePrompt(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
     "prompthub_organize_prompt",
@@ -25,7 +31,7 @@ export function registerOrganizePrompt(server: McpServer, ctx: ToolContext): voi
     async () => {
       try {
         const skill = await fetchOrganizeSkill(ctx.baseUrl);
-        return textResult(skill.body);
+        return textResult(`${RUNNER_CONTRACT_ORGANIZE_GUARD}\n\n${skill.body}`);
       } catch (e) {
         return toToolError(e);
       }

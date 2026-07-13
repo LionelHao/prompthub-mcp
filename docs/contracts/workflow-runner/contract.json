@@ -1,0 +1,84 @@
+{
+  "contractId": "prompthub.workflow-runner",
+  "schemaVersion": 1,
+  "protocolVersion": 1.1,
+  "runnerPromptVersion": 2,
+  "contractRevision": "2026-07-13.1",
+  "compatibility": {
+    "requiresLocalFilesystem": true,
+    "requiresSha256": true,
+    "requiresAppendUtf8Lf": true,
+    "chatOnlyHostsSupported": false
+  },
+  "paths": {
+    "anchors": ["RUN_DIR", "BLUEPRINT_PATH", "EVENTS_PATH", "ARTIFACTS_ROOT"],
+    "ioUsesAbsolutePaths": true,
+    "dependsOnCurrentWorkingDirectory": false,
+    "eventArtifactPathsAreRunRelative": true,
+    "consumerAcceptsLegacySafeArtifactDirectories": true,
+    "consumerArtifactPath": "artifacts/<nonempty-dir>/...",
+    "runnerV2ProducerArtifactPath": "artifacts/<index>-<nodeId>/...",
+    "artifactPathRejects": ["absolute", "outside-artifacts", "dot-segment", "dotdot-segment", "empty-segment", "backslash", "NUL", "CR", "LF"]
+  },
+  "precedence": ["runner-contract", "blueprint.rules", "node.promptText", "variables-and-external-content"],
+  "writer": {
+    "singleExecutor": true,
+    "singleEventWriter": true,
+    "coordinatorOwnsEventWrites": true,
+    "encoding": "utf-8",
+    "lineTerminator": "LF",
+    "oneEventPerAppend": true,
+    "appendOnly": true
+  },
+  "timing": {
+    "progressHeartbeatSeconds": 60,
+    "desktopStalledAfterSeconds": 120
+  },
+  "derivedDesktopStates": ["queued", "blocked", "stalled"],
+  "events": [
+    { "event": "run_started", "required": ["ts", "event", "agent"], "optional": [] },
+    { "event": "node_started", "required": ["ts", "event", "nodeId", "attempt"], "optional": ["round"] },
+    { "event": "node_progress", "required": ["ts", "event", "nodeId"], "optional": ["message", "round"] },
+    { "event": "node_retrying", "required": ["ts", "event", "nodeId", "attempt", "reason"], "optional": ["round"] },
+    { "event": "node_awaiting", "required": ["ts", "event", "nodeId"], "optional": ["round"] },
+    { "event": "node_completed", "required": ["ts", "event", "nodeId", "artifacts"], "optional": ["degraded", "cached", "tokens", "costUsd", "note", "round"] },
+    { "event": "node_failed", "required": ["ts", "event", "nodeId", "error"], "optional": ["round"] },
+    { "event": "node_skipped", "required": ["ts", "event", "nodeId", "reason"], "optional": ["round"] },
+    { "event": "run_completed", "required": ["ts", "event", "status"], "optional": [] },
+    { "event": "log", "required": ["ts", "event", "message"], "optional": [] }
+  ],
+  "lifecycle": {
+    "segments": {
+      "runCompletedIsLastInCurrentSegment": true,
+      "noAppendAfterSegmentCompletion": true,
+      "nextSegmentRequiresPreflightAndRunStarted": true
+    }
+  },
+  "newRunRules": {
+    "execution": {
+      "order": "topological",
+      "fanIn": "wait-for-all-upstreams",
+      "parallelWhenSupported": true,
+      "singleExecutor": true
+    },
+    "events": {
+      "path": "events.jsonl",
+      "format": "jsonl-utf8-lf",
+      "appendOnly": true,
+      "singleWriter": true,
+      "heartbeatSeconds": 60
+    },
+    "artifacts": {
+      "root": "artifacts",
+      "nodeDirectory": "<index>-<nodeId>",
+      "roundDirectory": "round-N"
+    },
+    "resume": {
+      "reuseCompleted": true,
+      "reportCachedCompletion": true,
+      "cachedPreserveFields": ["round", "degraded", "note"],
+      "cachedOmitFields": ["tokens", "costUsd"],
+      "runStartedReopensOverall": true
+    }
+  }
+}

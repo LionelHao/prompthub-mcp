@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.1/blueprint.schema.json",
+  "title": "PromptHub Workflow Runner Blueprint v1.1",
+  "type": "object",
+  "required": ["run", "variables", "graph", "rules"],
+  "properties": {
+    "run": {
+      "type": "object",
+      "required": ["id", "createdAt", "source", "adjusted"],
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "object", "required": ["slug"], "properties": { "slug": { "type": "string" }, "url": { "type": "string" } } },
+        "adjusted": { "type": "boolean" },
+        "derivedFrom": { "type": "string" }
+      }
+    },
+    "variables": { "type": "object" },
+    "graph": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "outputType"],
+            "properties": {
+              "id": { "type": "string" }, "label": { "type": "string" }, "model": { "type": "string" },
+              "promptText": { "type": "string" }, "params": { "type": "object" },
+              "inputType": { "type": "array", "items": { "enum": ["text", "image", "video", "file"] } },
+              "outputType": { "enum": ["text", "image", "video", "file"] }, "note": { "type": "string" }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "type": "object", "required": ["id", "source", "target"], "properties": { "id": { "type": "string" }, "source": { "type": "string" }, "target": { "type": "string" }, "label": { "type": "string" } } }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "required": ["protocolVersion"],
+      "properties": {
+        "protocolVersion": { "const": 1.1 },
+        "runnerPromptVersion": { "const": 2 },
+        "contractRevision": { "const": "2026-07-13.1" },
+        "retry": { "type": "integer", "minimum": 0 },
+        "execution": {
+          "type": "object",
+          "required": ["order", "fanIn", "parallelWhenSupported", "singleExecutor"],
+          "properties": {
+            "order": { "const": "topological" },
+            "fanIn": { "const": "wait-for-all-upstreams" },
+            "parallelWhenSupported": { "type": "boolean" },
+            "singleExecutor": { "const": true }
+          }
+        },
+        "events": {
+          "type": "object",
+          "required": ["path", "format", "appendOnly", "singleWriter", "heartbeatSeconds"],
+          "properties": {
+            "path": { "const": "events.jsonl" },
+            "format": { "const": "jsonl-utf8-lf" },
+            "appendOnly": { "const": true },
+            "singleWriter": { "const": true },
+            "heartbeatSeconds": { "type": "integer", "minimum": 1, "maximum": 119 }
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "required": ["root", "nodeDirectory", "roundDirectory"],
+          "properties": {
+            "root": { "const": "artifacts" },
+            "nodeDirectory": { "const": "<index>-<nodeId>" },
+            "roundDirectory": { "const": "round-N" }
+          }
+        },
+        "resume": {
+          "type": "object",
+          "required": ["reuseCompleted", "reportCachedCompletion", "cachedPreserveFields", "cachedOmitFields", "runStartedReopensOverall"],
+          "properties": {
+            "reuseCompleted": { "const": true },
+            "reportCachedCompletion": { "const": true },
+            "cachedPreserveFields": { "const": ["round", "degraded", "note"] },
+            "cachedOmitFields": { "const": ["tokens", "costUsd"] },
+            "runStartedReopensOverall": { "const": true }
+          }
+        }
+      }
+    }
+  }
+}

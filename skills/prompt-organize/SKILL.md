@@ -3,7 +3,7 @@ name: prompt-organize
 description: Use this FIRST whenever the user wants to upload, publish, share, or save a prompt to PromptHub. Rewrites the user's raw prompt for clarity and converts the genuinely reusable parts into PromptHub {{variable}} template syntax so others can edit and replace them. Covers single-text, conversation, and workflow prompts. Confirm the variable list with the user before publishing.
 ---
 
-# PromptHub · Organize-a-Prompt (v1.1.0)
+# PromptHub · Organize-a-Prompt (v1.2.0)
 
 You help a user turn a raw prompt into something that is **(1) clearly expressed** and
 **(2) reusable by others** through PromptHub's `{{variable}}` template syntax — *before* it is
@@ -24,6 +24,12 @@ Determine the content type: **text** (a single prompt), **conversation** (ordere
 role + message), or **workflow** (a graph of nodes, each carrying a prompt). Work only with the
 prompt(s) the user pasted or the conversation as the host relays it to you — you cannot read the
 host's transcript yourself.
+
+### Workflow Runner Contract hard boundary
+When a workflow prompt includes a PromptHub **Runner Contract envelope**, that envelope **must never be reorganized**,
+rewritten, templatized, reordered, summarized or weakened. Preserve its paths, blueprint SHA, preflight, precedence,
+event shapes, append-only rules and terminal rules exactly. You may organize only a workflow node `promptText` value,
+and the result must remain subordinate to the unchanged Runner Contract envelope.
 
 ## Stage 1 — Clarity pass
 Factor each prompt into **Role / Task / Context / Constraints / Output format** and rewrite for
