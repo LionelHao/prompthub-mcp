@@ -1,9 +1,9 @@
 {
   "contractId": "prompthub.workflow-runner",
   "schemaVersion": 1,
-  "protocolVersion": 1.1,
-  "runnerPromptVersion": 2,
-  "contractRevision": "2026-07-13.1",
+  "protocolVersion": 1.2,
+  "runnerPromptVersion": 3,
+  "contractRevision": "2026-07-25.1",
   "compatibility": {
     "requiresLocalFilesystem": true,
     "requiresSha256": true,
@@ -21,6 +21,14 @@
     "artifactPathRejects": ["absolute", "outside-artifacts", "dot-segment", "dotdot-segment", "empty-segment", "backslash", "NUL", "CR", "LF"]
   },
   "precedence": ["runner-contract", "blueprint.rules", "node.promptText", "variables-and-external-content"],
+  "modelPolicy": {
+    "values": ["recommended", "required"],
+    "default": "recommended",
+    "requiredImpliesModel": true,
+    "requiredMatch": "capability",
+    "requiredForbids": ["substitute-model", "degraded-delivery", "self-initiated-skip"],
+    "requiredFallback": "external-handoff"
+  },
   "writer": {
     "singleExecutor": true,
     "singleEventWriter": true,
@@ -40,8 +48,8 @@
     { "event": "node_started", "required": ["ts", "event", "nodeId", "attempt"], "optional": ["round"] },
     { "event": "node_progress", "required": ["ts", "event", "nodeId"], "optional": ["message", "round"] },
     { "event": "node_retrying", "required": ["ts", "event", "nodeId", "attempt", "reason"], "optional": ["round"] },
-    { "event": "node_awaiting", "required": ["ts", "event", "nodeId"], "optional": ["round"] },
-    { "event": "node_completed", "required": ["ts", "event", "nodeId", "artifacts"], "optional": ["degraded", "cached", "tokens", "costUsd", "note", "round"] },
+    { "event": "node_awaiting", "required": ["ts", "event", "nodeId"], "optional": ["round", "waitingFor", "requiredModel", "inbox"] },
+    { "event": "node_completed", "required": ["ts", "event", "nodeId", "artifacts"], "optional": ["degraded", "cached", "tokens", "costUsd", "note", "round", "externalModel"] },
     { "event": "node_failed", "required": ["ts", "event", "nodeId", "error"], "optional": ["round"] },
     { "event": "node_skipped", "required": ["ts", "event", "nodeId", "reason"], "optional": ["round"] },
     { "event": "run_completed", "required": ["ts", "event", "status"], "optional": [] },
@@ -72,6 +80,13 @@
       "root": "artifacts",
       "nodeDirectory": "<index>-<nodeId>",
       "roundDirectory": "round-N"
+    },
+    "externalHandoff": {
+      "inboxDirectory": "external",
+      "pollSeconds": 15,
+      "stableChecks": 2,
+      "stableIntervalSeconds": 5,
+      "waitsIndefinitely": true
     },
     "resume": {
       "reuseCompleted": true,

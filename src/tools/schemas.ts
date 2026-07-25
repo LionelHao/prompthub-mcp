@@ -23,7 +23,8 @@ workflow — a multi-step / multi-model pipeline. nodes has >= 1 entry; every ed
              { "id":"b", "label":"Refine", "outputType":"text", "promptText":"..." }],
     "edges":[{ "id":"e1", "source":"a", "target":"b" }] } } }
 
-Node fields: id (string), label (non-empty string), outputType (one of: text | image | video | file), promptText (optional — put the prompt here), model (optional).
+Node fields: id (string), label (non-empty string), outputType (one of: text | image | video | file), promptText (optional — put the prompt here), model (optional), modelPolicy (optional: "recommended" | "required").
+modelPolicy defaults to "recommended", where model is only a routing hint. Use "required" when the step is impossible without that specific model (video or image generation, for example): a running agent that cannot genuinely call it must hand the step to an external model instead of substituting, degrading, or skipping it. "required" needs a non-empty model — the pair is rejected otherwise.
 Naming: repoName and every file "path" segment must be lowercase letters/digits joined by single hyphens (e.g. "code-review", "prompts/my-prompt") — no spaces, uppercase, or underscores.`;
 
 export const fileSchema = z

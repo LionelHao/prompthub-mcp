@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.1/event.schema.json",
-  "title": "PromptHub Workflow Runner Event v1.1",
+  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.2/event.schema.json",
+  "title": "PromptHub Workflow Runner Event v1.2",
   "oneOf": [
     { "$ref": "#/$defs/run_started" },
     { "$ref": "#/$defs/node_started" },
@@ -24,6 +24,11 @@
       "description": "Consumer-compatible safe run-relative artifact path. Runner Prompt v2 producers use artifacts/<index>-<nodeId>/..., while v1.1 consumers also accept legacy artifacts/<nonempty-dir>/... paths.",
       "pattern": "^(?![\\s\\S]*[\\\\\\u0000\\r\\n])(?![\\s\\S]*//)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|$))artifacts/[^/]+(?:/[^/]+)+$"
     },
+    "inboxPath": {
+      "type": "string",
+      "description": "Run-relative external handoff inbox directory, always artifacts/<index>-<nodeId>/external. Same safety constraints as artifactPath.",
+      "pattern": "^(?![\\s\\S]*[\\\\\\u0000\\r\\n])(?![\\s\\S]*//)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|$))artifacts/[^/]+(?:/[^/]+)+$"
+    },
     "run_started": {
       "type": "object", "required": ["ts", "event", "agent"],
       "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "run_started" }, "agent": { "type": "string", "minLength": 1 } }
@@ -42,11 +47,25 @@
     },
     "node_awaiting": {
       "type": "object", "required": ["ts", "event", "nodeId"],
-      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_awaiting" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "round": { "$ref": "#/$defs/round" } }
+      "properties": {
+        "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_awaiting" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "round": { "$ref": "#/$defs/round" },
+        "waitingFor": {
+          "enum": ["human-input", "external-model"],
+          "description": "Absent is equivalent to \"human-input\" (v1.1 semantics). \"external-model\" means the node has modelPolicy \"required\" and the coordinating agent cannot invoke that model, so execution is handed to an external model."
+        },
+        "requiredModel": { "type": "string", "minLength": 1 },
+        "inbox": { "$ref": "#/$defs/inboxPath" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "waitingFor": { "const": "external-model" } }, "required": ["waitingFor"] },
+          "then": { "required": ["requiredModel", "inbox"] }
+        }
+      ]
     },
     "node_completed": {
       "type": "object", "required": ["ts", "event", "nodeId", "artifacts"],
-      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_completed" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifactPath" } }, "degraded": { "type": "boolean" }, "cached": { "type": "boolean" }, "tokens": { "type": "number", "minimum": 0 }, "costUsd": { "type": "number", "minimum": 0 }, "note": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
+      "properties": { "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_completed" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifactPath" } }, "degraded": { "type": "boolean" }, "cached": { "type": "boolean" }, "externalModel": { "type": "string", "minLength": 1, "description": "The external model that produced this node's artifacts via the required-model handoff. Its presence does not imply degraded delivery." }, "tokens": { "type": "number", "minimum": 0 }, "costUsd": { "type": "number", "minimum": 0 }, "note": { "type": "string" }, "round": { "$ref": "#/$defs/round" } }
     },
     "node_failed": {
       "type": "object", "required": ["ts", "event", "nodeId", "error"],

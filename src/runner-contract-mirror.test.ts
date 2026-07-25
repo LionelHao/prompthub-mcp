@@ -11,7 +11,7 @@ const CONTRACT_ROOT = join(
   "contracts",
   "workflow-runner",
 );
-const PINNED_CONTENT_SHA256 = "aa9b23e17a057aa3cd5e0fbe77d0acb27fb8499d8022c71d906832c19eef3489";
+const PINNED_CONTENT_SHA256 = "37b6ecee66a43f7ed458f47af63360cb75e8d3f53a19b16a6fb858ad65a1e23c";
 
 interface ContractManifest {
   contractId: string;
@@ -52,8 +52,8 @@ describe("workflow runner contract mirror", () => {
       events: Array<{ event: string }>;
     };
 
-    expect(guide).toContain("protocolVersion`: `1.1");
-    expect(guide).toContain("runnerPromptVersion`: `2");
+    expect(guide).toContain("protocolVersion`: `1.2");
+    expect(guide).toContain("runnerPromptVersion`: `3");
     expect(guide).toContain("preflight");
     expect(guide).toContain("Resume 与 Rerun");
     expect(contract.compatibility.chatOnlyHostsSupported).toBe(false);
@@ -69,5 +69,31 @@ describe("workflow runner contract mirror", () => {
       "run_completed",
       "log",
     ]);
+  });
+
+  test("mirrors the v1.2 required-model handoff semantics", () => {
+    const guide = readContractFile("README.md").toString("utf8");
+    const contract = JSON.parse(readContractFile("contract.json").toString("utf8")) as {
+      modelPolicy?: { values: string[]; default: string; requiredFallback: string };
+      newRunRules: { externalHandoff?: { inboxDirectory: string; waitsIndefinitely: boolean } };
+      events: Array<{ event: string; optional: string[] }>;
+    };
+
+    expect(contract.modelPolicy?.values).toEqual(["recommended", "required"]);
+    expect(contract.modelPolicy?.default).toBe("recommended");
+    expect(contract.modelPolicy?.requiredFallback).toBe("external-handoff");
+    expect(contract.newRunRules.externalHandoff?.inboxDirectory).toBe("external");
+    expect(contract.newRunRules.externalHandoff?.waitsIndefinitely).toBe(true);
+
+    const awaiting = contract.events.find(({ event }) => event === "node_awaiting");
+    expect(awaiting?.optional).toEqual(
+      expect.arrayContaining(["waitingFor", "requiredModel", "inbox"]),
+    );
+    const completed = contract.events.find(({ event }) => event === "node_completed");
+    expect(completed?.optional).toContain("externalModel");
+
+    // The public guide must carry the four prohibitions verbatim; hosts read it as-is.
+    expect(guide).toContain("不得改用其它模型代跑");
+    expect(guide).toContain("外部接力成功不算降级");
   });
 });

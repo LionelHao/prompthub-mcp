@@ -68,3 +68,34 @@ describe("stampModelOnFiles", () => {
     expect((nodes[1] as { model?: string }).model).toBe("Claude Sonnet 4.6");
   });
 });
+
+describe("stampModelOnFiles · modelPolicy 不受影响（0004）", () => {
+  test("filling an empty model never invents a modelPolicy", () => {
+    const files = [{
+      path: "flows/p", title: "P", type: "workflow",
+      content: { kind: "workflow", graph: { nodes: [{ id: "a", label: "Draft", outputType: "text" }], edges: [] } },
+    }];
+    const { files: out, stampedCount } = stampModelOnFiles(files, "Claude Sonnet 4.6");
+    expect(stampedCount).toBe(1);
+    const node = (out[0] as { content: { graph: { nodes: Array<Record<string, unknown>> } } }).content.graph.nodes[0]!;
+    expect(node.model).toBe("Claude Sonnet 4.6");
+    // 关键：绝不能把宿主模型顺手升格成硬约束——那会让别人拉下来必须用 Claude 才能跑。
+    expect("modelPolicy" in node).toBe(false);
+  });
+
+  test("a required node with an explicit model is left completely untouched", () => {
+    const files = [{
+      path: "flows/p", title: "P", type: "workflow",
+      content: {
+        kind: "workflow",
+        graph: {
+          nodes: [{ id: "a", label: "Shot", model: "Seedance 2.0", modelPolicy: "required", outputType: "video" }],
+          edges: [],
+        },
+      },
+    }];
+    const { files: out, stampedCount } = stampModelOnFiles(files, "Claude Sonnet 4.6");
+    expect(stampedCount).toBe(0);
+    expect(out[0]).toBe(files[0]);
+  });
+});

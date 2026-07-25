@@ -24,8 +24,8 @@ describe("prompthub_describe_runner_protocol", () => {
     const text = result.content[0]?.text ?? "";
 
     expect(result.isError).toBeUndefined();
-    expect(text).toContain("protocolVersion`: `1.1");
-    expect(text).toContain("runnerPromptVersion`: `2");
+    expect(text).toContain("protocolVersion`: `1.2");
+    expect(text).toContain("runnerPromptVersion`: `3");
     expect(text).toContain("不兼容对象");
     expect(text).toContain("## 10. 跨仓治理");
     for (const file of [
