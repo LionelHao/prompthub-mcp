@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.2/blueprint.schema.json",
-  "title": "PromptHub Workflow Runner Blueprint v1.2",
+  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.3/blueprint.schema.json",
+  "title": "PromptHub Workflow Runner Blueprint v1.3",
   "type": "object",
   "required": ["run", "variables", "graph", "rules"],
   "properties": {
@@ -27,7 +27,12 @@
             "type": "object",
             "required": ["id", "label", "outputType"],
             "properties": {
-              "id": { "type": "string" }, "label": { "type": "string" }, "model": { "type": "string" },
+              "id": {
+                "type": "string",
+                "not": { "pattern": "^__" },
+                "description": "The __ prefix is reserved by the contract (currently __environment, the environment stage's virtual node). Authored nodes must not use it."
+              },
+              "label": { "type": "string" }, "model": { "type": "string" },
               "modelPolicy": {
                 "enum": ["recommended", "required"],
                 "description": "Absent is equivalent to \"recommended\": model is a routing hint. \"required\" is a hard constraint — an agent that cannot genuinely invoke the model must hand the node off to an external model instead of substituting, degrading, or skipping it."
@@ -50,13 +55,69 @@
         }
       }
     },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["specVersion", "requirements"],
+      "description": "Environment stage declaration (v1.3). Declares WHAT the workflow needs, never HOW to install it: the blueprint is untrusted content, so install recipes live in the contract's host recipe table instead. Present if and only if protocolVersion is 1.3.",
+      "properties": {
+        "specVersion": { "const": 1 },
+        "requirements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "ref", "usedBy"],
+            "properties": {
+              "id": { "type": "string", "maxLength": 64, "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$" },
+              "kind": {
+                "enum": ["mcp", "plugin", "skill", "cli"],
+                "description": "plugin/skill have an automatic install channel on claude-code hosts. mcp and cli are verify-only: there is no safe name-to-command mapping for an MCP server (claude mcp add needs a url or command, and letting an untrusted blueprint name an endpoint hands the agent to an attacker), and system package managers exceed what a workflow may do."
+              },
+              "ref": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Structured identifier whose grammar depends on kind: plugin <plugin>@<marketplace>; skill <plugin>@<marketplace>:<skill>; mcp a dot/slash separated server name; cli a bare executable name. All grammars exclude whitespace and shell metacharacters."
+              },
+              "marketplaceSource": {
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?/[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$",
+                "description": "GitHub owner/repo of a non-official plugin marketplace, registered before install."
+              },
+              "policy": {
+                "enum": ["required", "recommended"],
+                "description": "Absent is equivalent to \"recommended\". Same vocabulary as node modelPolicy: a missing \"required\" item may not be substituted, faked, or self-skipped."
+              },
+              "usedBy": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string" },
+                "description": "Ids of graph nodes that actually need this. A missing required item blocks exactly these nodes and their descendants rather than the whole run."
+              },
+              "probe": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": { "tool": { "type": "string", "minLength": 1 }, "versionAtLeast": { "type": "string", "minLength": 1 } },
+                "description": "Capability probe, not a presence check: the capability counts as active only when it can genuinely be invoked."
+              },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
     "rules": {
       "type": "object",
       "required": ["protocolVersion"],
       "properties": {
-        "protocolVersion": { "const": 1.2 },
-        "runnerPromptVersion": { "const": 3 },
-        "contractRevision": { "const": "2026-07-25.1" },
+        "protocolVersion": {
+          "enum": [1.2, 1.3],
+          "description": "Range-accepted. 1.2 run bundles are unchanged; 1.3 adds the optional environment block. Consumers must accept both."
+        },
+        "runnerPromptVersion": { "enum": [3, 4] },
+        "contractRevision": { "enum": ["2026-07-25.1", "2026-08-11.1"] },
         "retry": { "type": "integer", "minimum": 0 },
         "execution": {
           "type": "object",
@@ -113,5 +174,33 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "description": "Version triple pairing: the environment block is present if and only if the bundle is 1.3 / 4 / 2026-08-11.1. A 1.2 bundle stays exactly as it was.",
+      "if": { "required": ["environment"] },
+      "then": {
+        "properties": {
+          "rules": {
+            "properties": {
+              "protocolVersion": { "const": 1.3 },
+              "runnerPromptVersion": { "const": 4 },
+              "contractRevision": { "const": "2026-08-11.1" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "rules": {
+            "properties": {
+              "protocolVersion": { "const": 1.2 },
+              "runnerPromptVersion": { "const": 3 },
+              "contractRevision": { "const": "2026-07-25.1" }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

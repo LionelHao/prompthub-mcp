@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.2/event.schema.json",
-  "title": "PromptHub Workflow Runner Event v1.2",
+  "$id": "https://www.awesome-prompt.com/contracts/workflow-runner/v1.3/event.schema.json",
+  "title": "PromptHub Workflow Runner Event v1.3",
   "oneOf": [
     { "$ref": "#/$defs/run_started" },
     { "$ref": "#/$defs/node_started" },
@@ -50,16 +50,27 @@
       "properties": {
         "ts": { "$ref": "#/$defs/ts" }, "event": { "const": "node_awaiting" }, "nodeId": { "$ref": "#/$defs/nodeId" }, "round": { "$ref": "#/$defs/round" },
         "waitingFor": {
-          "enum": ["human-input", "external-model"],
-          "description": "Absent is equivalent to \"human-input\" (v1.1 semantics). \"external-model\" means the node has modelPolicy \"required\" and the coordinating agent cannot invoke that model, so execution is handed to an external model."
+          "enum": ["human-input", "external-model", "environment"],
+          "description": "Absent is equivalent to \"human-input\" (v1.1 semantics). \"external-model\" means the node has modelPolicy \"required\" and the coordinating agent cannot invoke that model, so execution is handed to an external model. \"environment\" (v1.3) means the reserved __environment node is waiting on a host-level change that only takes effect after the agent restarts; the segment may close with run_completed status \"partial\" and a later resume re-probes."
         },
         "requiredModel": { "type": "string", "minLength": 1 },
-        "inbox": { "$ref": "#/$defs/inboxPath" }
+        "inbox": { "$ref": "#/$defs/inboxPath" },
+        "pendingRequirements": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Environment requirement ids the run is waiting on. Only valid together with waitingFor \"environment\"; lets a consumer render what is missing without parsing the report artifact."
+        }
       },
       "allOf": [
         {
           "if": { "properties": { "waitingFor": { "const": "external-model" } }, "required": ["waitingFor"] },
           "then": { "required": ["requiredModel", "inbox"] }
+        },
+        {
+          "if": { "properties": { "waitingFor": { "const": "environment" } }, "required": ["waitingFor"] },
+          "then": { "required": ["pendingRequirements"] },
+          "else": { "not": { "required": ["pendingRequirements"] } }
         }
       ]
     },

@@ -11,7 +11,7 @@ const CONTRACT_ROOT = join(
   "contracts",
   "workflow-runner",
 );
-const PINNED_CONTENT_SHA256 = "37b6ecee66a43f7ed458f47af63360cb75e8d3f53a19b16a6fb858ad65a1e23c";
+const PINNED_CONTENT_SHA256 = "f162b36e9d900d9b9a7fbaaece591a2b9d6999cc777f1b088d99a619ff1a63cb";
 
 interface ContractManifest {
   contractId: string;
@@ -52,8 +52,10 @@ describe("workflow runner contract mirror", () => {
       events: Array<{ event: string }>;
     };
 
-    expect(guide).toContain("protocolVersion`: `1.2");
-    expect(guide).toContain("runnerPromptVersion`: `3");
+    // 0069 起区间接受：Bundle 当前版本为 1.3 / 4，1.2 / 3 仍是受支持的基线三元组。
+    expect(guide).toContain("protocolVersion`: 当前 `1.3");
+    expect(guide).toContain("runnerPromptVersion`: 当前 `4");
+    expect(guide).toContain("区间接受");
     expect(guide).toContain("preflight");
     expect(guide).toContain("Resume 与 Rerun");
     expect(contract.compatibility.chatOnlyHostsSupported).toBe(false);

@@ -24,10 +24,13 @@ describe("prompthub_describe_runner_protocol", () => {
     const text = result.content[0]?.text ?? "";
 
     expect(result.isError).toBeUndefined();
-    expect(text).toContain("protocolVersion`: `1.2");
-    expect(text).toContain("runnerPromptVersion`: `3");
+    // 0069 起 Bundle 当前版本为 1.3 / 4，1.2 / 3 仍是受支持的基线三元组（区间接受）。
+    expect(text).toContain("protocolVersion`: 当前 `1.3");
+    expect(text).toContain("runnerPromptVersion`: 当前 `4");
+    expect(text).toContain("区间接受");
     expect(text).toContain("不兼容对象");
     expect(text).toContain("## 10. 跨仓治理");
+    expect(text).toContain("## 11. 环境准备与验证阶段");
     for (const file of [
       "README.md",
       "contract.json",

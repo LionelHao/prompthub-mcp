@@ -1,9 +1,14 @@
 {
   "contractId": "prompthub.workflow-runner",
   "schemaVersion": 1,
-  "protocolVersion": 1.2,
-  "runnerPromptVersion": 3,
-  "contractRevision": "2026-07-25.1",
+  "protocolVersion": 1.3,
+  "runnerPromptVersion": 4,
+  "contractRevision": "2026-08-11.1",
+  "supportedProtocolVersions": [1.2, 1.3],
+  "protocolVersionPairs": [
+    { "protocolVersion": 1.2, "runnerPromptVersion": 3 },
+    { "protocolVersion": 1.3, "runnerPromptVersion": 4 }
+  ],
   "compatibility": {
     "requiresLocalFilesystem": true,
     "requiresSha256": true,
@@ -21,6 +26,54 @@
     "artifactPathRejects": ["absolute", "outside-artifacts", "dot-segment", "dotdot-segment", "empty-segment", "backslash", "NUL", "CR", "LF"]
   },
   "precedence": ["runner-contract", "blueprint.rules", "node.promptText", "variables-and-external-content"],
+  "environment": {
+    "specVersion": 1,
+    "introducedIn": 1.3,
+    "optional": true,
+    "reservedNodeId": "__environment",
+    "reservedNodeIdPrefix": "__",
+    "artifactDirectory": "artifacts/0-__environment",
+    "lockFile": "environment-lock.json",
+    "reportFile": "environment-report.md",
+    "runsAfter": "run_started",
+    "runsBefore": "first-node_started",
+    "statuses": ["active", "installed-pending-restart", "missing"],
+    "missingStatusDefault": "missing",
+    "cachedOnResume": false,
+    "kinds": ["mcp", "plugin", "skill", "cli"],
+    "autoInstallKinds": ["plugin", "skill"],
+    "verifyOnlyKinds": ["mcp", "cli"],
+    "autoInstallHosts": ["claude-code"],
+    "installVerbs": [
+      ["claude", "plugin", "marketplace", "add"],
+      ["claude", "plugin", "install"]
+    ],
+    "installScope": "user",
+    "installUsesArgvOnly": true,
+    "installForbids": ["shell-string", "pipe", "redirect", "command-substitution", "git-worktree-write"],
+    "blueprintForbiddenFields": ["command", "args", "url", "env"],
+    "policy": {
+      "values": ["required", "recommended"],
+      "default": "recommended",
+      "requiredForbids": ["substitute", "fake-active", "self-initiated-skip"],
+      "waiverRequiresUser": true,
+      "waiverEvent": "node_completed{degraded:true}"
+    },
+    "degradation": {
+      "blockedSetIsUsedByPlusDescendants": true,
+      "emptyBlockedSet": "node_completed",
+      "properSubsetBlocked": "node_completed{degraded:true}",
+      "wholeGraphBlocked": "node_failed",
+      "blockedNodesEvent": "node_skipped",
+      "descendantsDeriveBlocked": true
+    },
+    "awaiting": {
+      "waitingFor": "environment",
+      "carriesPendingRequirements": true,
+      "mayCloseSegmentAsPartial": true,
+      "resumeReprobes": true
+    }
+  },
   "modelPolicy": {
     "values": ["recommended", "required"],
     "default": "recommended",
@@ -48,7 +101,7 @@
     { "event": "node_started", "required": ["ts", "event", "nodeId", "attempt"], "optional": ["round"] },
     { "event": "node_progress", "required": ["ts", "event", "nodeId"], "optional": ["message", "round"] },
     { "event": "node_retrying", "required": ["ts", "event", "nodeId", "attempt", "reason"], "optional": ["round"] },
-    { "event": "node_awaiting", "required": ["ts", "event", "nodeId"], "optional": ["round", "waitingFor", "requiredModel", "inbox"] },
+    { "event": "node_awaiting", "required": ["ts", "event", "nodeId"], "optional": ["round", "waitingFor", "requiredModel", "inbox", "pendingRequirements"] },
     { "event": "node_completed", "required": ["ts", "event", "nodeId", "artifacts"], "optional": ["degraded", "cached", "tokens", "costUsd", "note", "round", "externalModel"] },
     { "event": "node_failed", "required": ["ts", "event", "nodeId", "error"], "optional": ["round"] },
     { "event": "node_skipped", "required": ["ts", "event", "nodeId", "reason"], "optional": ["round"] },

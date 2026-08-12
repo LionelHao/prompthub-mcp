@@ -1,8 +1,8 @@
 {
   "contractId": "prompthub.workflow-runner",
-  "protocolVersion": 1.2,
-  "runnerPromptVersion": 3,
-  "contractRevision": "2026-07-25.1",
+  "protocolVersion": 1.3,
+  "runnerPromptVersion": 4,
+  "contractRevision": "2026-08-11.1",
   "canonicalRepository": "prompt-hub",
   "hashAlgorithm": "sha256(path + NUL + bytes + NUL, in listed order)",
   "hashFiles": [
@@ -11,5 +11,5 @@
     "contract.json",
     "event.schema.json"
   ],
-  "contentSha256": "37b6ecee66a43f7ed458f47af63360cb75e8d3f53a19b16a6fb858ad65a1e23c"
+  "contentSha256": "f162b36e9d900d9b9a7fbaaece591a2b9d6999cc777f1b088d99a619ff1a63cb"
 }

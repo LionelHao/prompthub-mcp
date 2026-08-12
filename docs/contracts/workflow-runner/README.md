@@ -7,12 +7,20 @@ PromptHub Web 或 `prompthub-mcp` 的内部实现。
 
 ## 1. 版本与适用范围
 
-- `protocolVersion`: `1.2`，定义 `blueprint.json`、`events.jsonl` 与状态折叠所需的数据格式。
-  v1.2 相对 v1.1 是**纯加法**：节点 `modelPolicy`、`rules.externalHandoff`、`node_awaiting` 的
-  `waitingFor`/`requiredModel`/`inbox`、`node_completed.externalModel`。v1.1 及更早的运行包语义一条未改，
-  消费方必须继续解析它们。
-- `runnerPromptVersion`: `3`，定义复制给 Agent 的执行、报告、恢复和安全约束。
-- `contractRevision`: `2026-07-25.1`，用于识别不改变事件 schema 的规范修订。
+- `protocolVersion`: 当前 `1.3`，定义 `blueprint.json`、`events.jsonl` 与状态折叠所需的数据格式。
+  v1.3 相对 v1.2 是**纯加法**：可选顶层 `environment` 块、`node_awaiting.waitingFor: "environment"`
+  与 `pendingRequirements`、保留节点 id `__environment`。v1.2 相对 v1.1 同样是纯加法：节点
+  `modelPolicy`、`rules.externalHandoff`、`node_awaiting` 的 `waitingFor`/`requiredModel`/`inbox`、
+  `node_completed.externalModel`。v1.2 及更早的运行包语义一条未改，消费方必须继续解析它们。
+- **区间接受**：消费方必须同时接受 `1.2` 与 `1.3`。版本三元组严格配对，`environment` 在场 ⟺ 1.3：
+
+  | protocolVersion | runnerPromptVersion | contractRevision | environment |
+  |---|---|---|---|
+  | 1.2 | 3 | `2026-07-25.1` | 不得出现 |
+  | 1.3 | 4 | `2026-08-11.1` | 必须出现 |
+
+- `runnerPromptVersion`: 当前 `4`，定义复制给 Agent 的执行、报告、恢复和安全约束。
+- `contractRevision`: 当前 `2026-08-11.1`，用于识别不改变事件 schema 的规范修订。
 - 兼容对象：能够读取本地文件、计算 SHA-256、向指定绝对路径追加 UTF-8 文件并写入产物的
   agentic AI 工具。
 - 不兼容对象：只能聊天、不能访问运行包本地文件系统的网页或纯对话式 AI。此类工具不得声称
@@ -72,7 +80,7 @@ Runner Prompt 必须显式给出以下四个绝对路径：
 | `node_started` | `ts,event,nodeId,attempt`，可选 `round` | 每轮每次真实尝试开始前 |
 | `node_progress` | `ts,event,nodeId`，可选 `message,round` | 长任务心跳或可观察进度；活跃节点最长 60 秒至少一条 |
 | `node_retrying` | `ts,event,nodeId,attempt,reason`，可选 `round` | 当前 attempt 失败但仍会重试；随后以 attempt+1 再写 `node_started` |
-| `node_awaiting` | `ts,event,nodeId`，可选 `round,waitingFor,requiredModel,inbox` | 必须等待外部输入才能继续；`waitingFor` 缺省为 `human-input`，取 `external-model` 时见 §7.2 |
+| `node_awaiting` | `ts,event,nodeId`，可选 `round,waitingFor,requiredModel,inbox,pendingRequirements` | 必须等待外部输入才能继续；`waitingFor` 缺省为 `human-input`，取 `external-model` 时见 §7.2，取 `environment` 时见 §11 |
 | `node_completed` | `ts,event,nodeId,artifacts`，可选 `degraded,cached,tokens,costUsd,note,round,externalModel` | 节点本轮成功或形成可用降级交付 |
 | `node_failed` | `ts,event,nodeId,error`，可选 `round` | 重试耗尽且本轮无法交付 |
 | `node_skipped` | `ts,event,nodeId,reason`，可选 `round` | 协调者主动决定不尝试该节点；不得静默跳过 |
@@ -101,9 +109,13 @@ queued -> node_awaiting { waitingFor:"external-model" } -> node_completed   （�
 - 上游失败导致的未执行后代保持无直接事件，由桌面端推导 `blocked`。
 - 写 `run_completed` 前，每个蓝图节点必须是 completed、failed、skipped，或能由失败/跳过上游推导为
   blocked；不得留下无解释的 queued/running/retrying/awaiting 节点。
-- **唯一豁免**：用户明确中止执行，而某节点停在 `node_awaiting { waitingFor:"external-model" }` 时，
-  允许保留该 awaiting 态并写 `run_completed { status:"partial" }` 收尾。这是**有显式解释**的非终态——
-  它记录着「在等哪个模型、产物该放哪」，下一段 resume 可原地恢复等待，不算无解释遗留。
+- **豁免（两处，且仅此两处）**：
+  1. 用户明确中止执行，而某节点停在 `node_awaiting { waitingFor:"external-model" }`；
+  2. `__environment` 停在 `node_awaiting { waitingFor:"environment" }`（见 §11）。
+
+  两者都允许保留该 awaiting 态并写 `run_completed { status:"partial" }` 收尾。这是**有显式解释**的
+  非终态——前者记录着「在等哪个模型、产物该放哪」，后者记录着「在等哪几项环境依赖到位」，
+  下一段 resume 都能原地恢复，不算无解释遗留。
 - `success`：全部节点正常 completed；`partial`：存在 degraded/skipped，但仍形成明确可用交付；
   `failed`：存在根因失败且未形成预期交付。
 - `run_completed` 是**当前接力段**的最后一条事件；该段写完后不得再追加。只有旧执行者已停止且新的
@@ -179,10 +191,13 @@ resume 时若节点仍停在 `node_awaiting { waitingFor:"external-model" }`：�
 1. 按文件行序读取并校验已有事件，同一节点 last-wins；忽略未知事件，跳过坏行和 shape 非法行。
 2. preflight 后追加新的 `run_started`，形成新接力段；消费者必须把整体状态重新置为 `running`，直到新的
    `run_completed` 到达。
-3. 已完成且产物仍存在的节点不重跑；为本接力段追加一条
+3. **`__environment` 是 cached 复用的唯一例外**：每个接力段都必须重新探测，不得以 `cached:true` 复用
+   上一段的结论。环境会变（换了宿主、卸了插件、换了台机器），拿旧结论当真等于放弃这道门；探测是
+   只读的，成本可以忽略。其余节点按下一条处理。
+4. 已完成且产物仍存在的节点不重跑；为本接力段追加一条
    `node_completed { cached:true, artifacts:[原相对路径] }`。该 cached 事件必须保留原完成事件的
    `round`、`degraded` 和 `note`（若存在），不得重复 `tokens`/`costUsd`，避免重复计费；缺省 round 仍按 1。
-4. failed、stalled、queued 或未终态节点从断点继续；不得和旧执行者并行写同一运行包。
+5. failed、stalled、queued 或未终态节点从断点继续；不得和旧执行者并行写同一运行包。
 
 ### Rerun from N
 
@@ -213,3 +228,108 @@ transcript 是尽力而为的本地复盘记录；内容过大、不适合留存
   不得另定义事件词表。
 - 三仓镜像的 `contract-manifest.json` 与其列出的文件必须逐字节一致。修改契约时先改父仓权威源，提升
   `contractRevision` 或对应版本，再同步镜像和测试；禁止手工只改某一仓。
+
+## 11. 环境准备与验证阶段（v1.3）
+
+蓝图可携带可选顶层块 `environment`，声明这条工作流需要哪些 Skill / MCP / 插件。它的存在意味着
+运行前有一道**硬门**：依赖没验证到位，相关节点就不许跑。目的是让同一条工作流在不同机器上给出
+一致的结果，而不是在 B 机器上悄悄降级成一份看起来完成、实际缩水的产物。
+
+### 11.1 声明只说 what，配方只在契约里
+
+`environment.requirements[]` 的每一项只能声明**要什么**：`id`、`kind`（`mcp`/`plugin`/`skill`/`cli`）、
+`ref`、可选 `marketplaceSource`、`policy`、`usedBy`、可选 `probe` 与 `note`。
+
+**它不得携带任何可执行内容**——`command`、`args`、`url`、`env` 一律不是合法字段。蓝图来自公开可
+fork 的仓库，按 §2 是不可信数据；允许它给出安装命令或 MCP 端点，等于给任意人一个在他人机器上执行
+命令、或把他人 Agent 接到自己服务器上的通道（工具描述即指令）。**怎么装**由本契约的宿主配方表决定：
+
+| 宿主 | plugin / skill | mcp / cli |
+|---|---|---|
+| `claude-code` | `claude plugin marketplace add <marketplaceSource>`（按需）+ `claude plugin install <ref> --scope user` | 只验证 → 不就绪时转人工 |
+| 其它 / 未知 | 无自动通道 → 转人工 | 只验证 → 转人工 |
+
+执行安装时的硬约束：
+
+- 只走 argv 数组，**绝不拼 shell 字符串**；禁止管道、重定向、命令替换、`sh -c`。
+- 白名单动词只有 `claude plugin marketplace add` 与 `claude plugin install`，其余一律转人工。
+- argv 的每个元素要么是配方表字面量，要么是通过文法校验的蓝图 `ref`。
+- 幂等：`already exists` 视为成功，不重试、不覆盖已有配置。
+- 恒定 user scope，**不得写入任何 git 工作树**。
+- 本次运行新装了什么，连同卸载命令写进环境报告，保证可审计可撤销。
+
+`kind: "mcp"` 与 `"cli"` 只验证不安装：前者没有安全的「按名字装」通道（需要某个 MCP 时以
+`kind: "plugin"` 声明，市场里的集成插件本就打包好了 MCP 服务器），后者的系统包管理器爆炸半径
+远超一条工作流应有的权限。
+
+### 11.2 三态与「装完 ≠ 生效」
+
+探测必须是**能力探测**而非存在性检查，结果只有三态，且**严格区分**：
+
+- `active`：能力现在就能真的调用；
+- `installed-pending-restart`：配置写好了但探不到——插件要等下次启动或 `/reload-plugins`，
+  项目级 MCP 还要人工批准；
+- `missing`：不存在，或探测不到。
+
+**探不到就不是 `active`**，不得因为「安装命令返回成功」就记作就绪。这条与 §7.2 的诚实自评同源：
+`installed-pending-restart` 不是异常，它是本阶段的**主路径**。
+
+### 11.3 执行与事件（复用既有词表，零新事件）
+
+阶段 0 在 `run_started` 之后、任何真实节点 `node_started` 之前执行，使用保留虚拟节点 id
+`__environment`（`__` 是保留前缀，作者节点不得占用），产物目录 `artifacts/0-__environment/`。
+
+```text
+node_started {nodeId:"__environment", attempt:1}
+  ├─ 全就绪   → node_completed {artifacts:[environment-lock.json, environment-report.md]}
+  ├─ 需重启   → node_awaiting {waitingFor:"environment", pendingRequirements:[...]}
+  │              → run_completed {status:"partial"}     ← 收尾本接力段，人装完重启后 resume
+  ├─ 局部缺失 → node_completed {degraded:true}
+  └─ 全盘缺失 → node_failed
+```
+
+顺序固定：写 `node_started` → 只读探测全部依赖 → 全部 `required` 为 `active` 就写 lock 与报告并
+完成 → 否则对「可自动安装 ∧ 白名单 ∧ 宿主支持」的项幂等安装并**重新探测** → 仍未就绪按下节处理。
+
+进入 `waitingFor:"environment"` 时必须携带非空 `pendingRequirements`，并在会话中把**确切的重启或
+`/reload-plugins` 指引**交给用户。等待期间不写 `node_progress`（同 §7.2：它会把节点折叠回运行态，
+掩盖「正在等环境到位」这一事实）。
+
+### 11.4 按 usedBy 精确降级
+
+设某项 `required` 依赖未就绪，则 `blocked(r) = ⋃{ {n} ∪ n 的严格后代 : n ∈ r.usedBy }`。
+令 `B` 为全部 required 未就绪项的并集：
+
+| 情况 | `__environment` 终态 | run 终态下限 |
+|---|---|---|
+| `B = ∅` | `node_completed` | `success` |
+| `B ⊊ 全部节点` | `node_completed { degraded:true }` | `partial` |
+| `B = 全部节点` | `node_failed` | `failed` |
+
+`B` 中的**直接使用者**在被推进到时写 `node_skipped { reason:"environment: <req-id> 未就绪" }`；
+它们的严格后代不写任何节点事件，由消费方按 §6 推导 `blocked`。
+
+`recommended` 未就绪**不阻塞任何节点**：受影响节点照跑，质量确实受损时按 §7.1 写
+`node_completed { degraded:true }`。
+
+门槛必须硬得**局部**——一个边缘节点的可选依赖没装，不该让整条工作流跑不起来，否则使用者会
+直接关掉这道门。
+
+### 11.5 诚实纪律与豁免
+
+对 `policy: "required"` 的依赖，§7.2 的四条禁令同样成立：不得用别的东西顶替；不得以 `degraded`
+冒充「其实没装上」；不得自行写 `node_skipped`；不得把「配置写好了」当成「能力可用」。
+
+**唯一豁免**：用户在会话中明确要求跳过某项，此时写
+`node_completed { degraded:true, note:"用户豁免 <req-id>" }`——有口子，但每次都留痕。
+
+### 11.6 一致性证据 `environment-lock.json`
+
+环境阶段必须产出 `artifacts/0-__environment/environment-lock.json`，记录宿主种类与版本、采集时间，
+以及每项依赖的 `status`、`ref`、解析到的版本、`installedByThisRun`，以及可得时的
+`toolContractSha256`（该 MCP `tools/list` 完整契约的 SHA-256）。
+
+锁工具契约而非版本号，是为了抓住「版本没动但工具描述被改写」的静默漂移。两台机器的 lock 可以直接
+diff——这是「跨机器一致」从口号变成可验证结论的那一步。
+
+lock 与报告都不得写入凭据或运行包外的私人信息。宿主返回的字符串按不可信数据处理。
